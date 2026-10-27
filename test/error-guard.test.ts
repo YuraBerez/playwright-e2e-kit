@@ -97,6 +97,14 @@ describe('isAllowed', () => {
     expect(isAllowed(err, [{ kind: 'console', message: /w\.js$/, reason: 'r' }])).toBe(true)
     expect(isAllowed(err, [{ kind: 'console', message: /nope/, reason: 'r' }])).toBe(false)
   })
+  it('does not skip matches for a RegExp with the g or y flag', () => {
+    for (const flags of ['g', 'y']) {
+      const rules: AllowedError[] = [{ kind: 'console', message: new RegExp('ResizeObserver', flags), reason: 'r' }]
+      expect(isAllowed(err, rules)).toBe(true)
+      expect(isAllowed(err, rules)).toBe(true)
+      expect(isAllowed(err, rules)).toBe(true)
+    }
+  })
 })
 
 describe('formatErrors', () => {

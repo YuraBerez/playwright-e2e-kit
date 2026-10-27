@@ -18,7 +18,11 @@ export function isAllowed(error, allow) {
     return allow.some((rule) => rule.kind === error.kind &&
         (typeof rule.message === 'string'
             ? error.text.includes(rule.message) || error.url.includes(rule.message)
-            : rule.message.test(error.text) || rule.message.test(error.url)));
+            : matches(rule.message, error.text) || matches(rule.message, error.url)));
+}
+/** Tests a RegExp without state: a `g` or `y` flag would keep `lastIndex` between calls and skip matches. */
+function matches(pattern, value) {
+    return new RegExp(pattern.source, pattern.flags.replace(/[gy]/g, '')).test(value);
 }
 /** Numbered, readable report of the collected errors. */
 export function formatErrors(errors) {
