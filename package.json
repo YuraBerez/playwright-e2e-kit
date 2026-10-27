@@ -1,0 +1,78 @@
+{
+  "name": "playwright-e2e-kit",
+  "version": "0.1.0",
+  "description": "Project-agnostic Playwright e2e kit: layered screens, steps and specs, boxed test.step phases, a browser error guard, an axe accessibility step, data-layer cleanup and ESLint layer rules.",
+  "license": "MIT",
+  "type": "module",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/YuraBerez/playwright-e2e-kit.git"
+  },
+  "keywords": [
+    "playwright",
+    "e2e",
+    "page-object",
+    "eslint",
+    "axe"
+  ],
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./a11y": {
+      "types": "./dist/a11y.d.ts",
+      "default": "./dist/a11y.js"
+    },
+    "./config": {
+      "types": "./dist/config.d.ts",
+      "default": "./dist/config.js"
+    },
+    "./eslint": {
+      "types": "./dist/eslint.d.ts",
+      "default": "./dist/eslint.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "rm -rf dist && tsc -p tsconfig.build.json",
+    "type-check": "tsc -p tsconfig.json --noEmit",
+    "lint": "run-s lint:eslint check:no-product-refs check:dist",
+    "lint:eslint": "eslint . --max-warnings 0",
+    "check:no-product-refs": "node scripts/check-no-product-refs.mjs --history",
+    "check:dist": "npm run build && git diff --exit-code --stat -- dist && test -z \"$(git status --porcelain -- dist)\"",
+    "test": "vitest run",
+    "test:coverage": "vitest run --coverage"
+  },
+  "peerDependencies": {
+    "@axe-core/playwright": ">=4.8.0",
+    "@playwright/test": ">=1.50.0",
+    "eslint": ">=9.0.0"
+  },
+  "peerDependenciesMeta": {
+    "@axe-core/playwright": {
+      "optional": true
+    },
+    "eslint": {
+      "optional": true
+    }
+  },
+  "devDependencies": {
+    "@axe-core/playwright": "^4.13.0",
+    "@eslint/js": "^10.0.1",
+    "@playwright/test": "^1.64.0",
+    "@types/node": "^24.13.4",
+    "@vitest/coverage-v8": "^4.1.11",
+    "eslint": "^10.10.0",
+    "npm-run-all2": "^9.0.3",
+    "typescript": "~6.0.0",
+    "typescript-eslint": "^8.72.1",
+    "vitest": "^4.1.11"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}
