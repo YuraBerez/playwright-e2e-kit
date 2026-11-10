@@ -12,7 +12,7 @@ data-layer implementation, its targets and its credentials.
 The kit is a git dependency. There is no registry and no publish step. Pin an exact tag:
 
 ```bash
-npm install --save-dev "github:YuraBerez/playwright-e2e-kit#v0.1.0"
+npm install --save-dev "github:YuraBerez/playwright-e2e-kit#v0.2.0"
 ```
 
 The built output (`dist/`) is committed, so the install does not build anything and works with
