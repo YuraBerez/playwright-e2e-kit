@@ -5,6 +5,22 @@ Keep a Changelog, and the project follows Semantic Versioning. A change that bre
 
 ## [Unreleased]
 
+Additive: only apps that import `playwright-e2e-kit/compose` see a change.
+
+### Added
+
+- Reusable workflow `.github/workflows/compose-e2e.yml` (`workflow_call`) for Compose
+  Multiplatform web e2e tests: JDK 21 and Gradle cache, `wasmJsBrowserDistribution` with a
+  separate Gradle root (`gradle-dir`) and web module (`app-dir`), a static server with a base path
+  (index.html fallback for navigations only; fails clearly when the port is taken), Playwright
+  browsers cache, report upload without traces by default.
+  GitHub-hosted runners and self-hosted macOS runners. The kit's `e2e (compose)` CI job uses it.
+  README "Compose MP web in CI" (#21).
+- `diagnoseCompose(page)` in `playwright-e2e-kit/compose`: a11y root present or empty, node count,
+  node ids (test tags), nodes without an accessible name, `pointer-events`, and hints. A
+  `composeReady` timeout adds its summary to the error and attaches it as
+  `compose-diagnosis.json`. README "Troubleshooting" table (#22).
+
 ## [0.2.0] - 2026-11-10
 
 Minor release: every change is additive, so React, Vue, Nuxt and Angular apps see no change.

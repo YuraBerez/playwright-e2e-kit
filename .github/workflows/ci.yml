@@ -1,7 +1,8 @@
 # CI of the kit. GitHub-hosted runners only (public repository).
 # - gate: type-check, lint (ESLint, no-product-refs, dist matches the sources), unit tests.
 # - e2e: the real-browser self-tests against each fixture app (README "Release checklist":
-#   every job must be green before a v* tag).
+#   every job must be green before a v* tag). The Compose fixture runs through the reusable
+#   workflow compose-e2e.yml that consumers use, so the kit tests its own template.
 name: CI
 
 on:
@@ -20,8 +21,6 @@ permissions:
 env:
   NODE_VERSION: '24'
   FLUTTER_VERSION: '3.47.8'
-  # Compose fixture: JDK for Gradle (the Gradle, Kotlin and Compose versions are pinned in the app).
-  JAVA_VERSION: '21'
 
 jobs:
   gate:
@@ -48,7 +47,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        app: [react, vue, angular, flutter, compose]
+        app: [react, vue, angular, flutter]
     env:
       E2E_APP: ${{ matrix.app }}
     steps:
@@ -66,15 +65,6 @@ jobs:
           channel: stable
           flutter-version: ${{ env.FLUTTER_VERSION }}
           cache: true
-      - if: matrix.app == 'compose'
-        uses: actions/setup-java@77dd5b2ce225ea11469928ac317850245a74ae78 # v6.2.0
-        with:
-          distribution: temurin
-          java-version: ${{ env.JAVA_VERSION }}
-          cache: gradle
-          cache-dependency-path: |
-            test/fixtures-apps/compose/*.gradle.kts
-            test/fixtures-apps/compose/gradle/wrapper/gradle-wrapper.properties
       - run: npm ci
       - run: npx playwright install --with-deps chromium
       # Installs and builds the fixture app outside the Playwright web-server timeout.
@@ -90,3 +80,21 @@ jobs:
             e2e/playwright-report/
             e2e/test-results/
           retention-days: 7
+
+  e2e-compose:
+    name: e2e (compose)
+    # The reusable template (README "Compose MP web in CI"). `env` is not available in `with`, so
+    # the Node and JDK versions repeat NODE_VERSION and the template's JDK 21 default.
+    uses: ./.github/workflows/compose-e2e.yml
+    with:
+      gradle-dir: test/fixtures-apps/compose # the fixture is its own Gradle root
+      app-dir: test/fixtures-apps/compose
+      port: 4305
+      playwright-config: e2e/playwright.config.ts
+      playwright-project: compose
+      report-dir: e2e/playwright-report
+      results-dir: e2e/test-results
+      artifact-name: e2e-report-compose
+      node-version: '24'
+      java-version: '21'
+      timeout-minutes: 20

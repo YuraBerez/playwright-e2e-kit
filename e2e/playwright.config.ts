@@ -37,12 +37,15 @@ const selected = process.env.E2E_APP
 if (selected && !(selected in APPS)) throw new Error(`E2E_APP must be one of ${Object.keys(APPS).join(', ')}.`)
 const apps = (selected ? [selected] : Object.keys(APPS)) as App[]
 const root = new URL('..', import.meta.url).pathname
-const baseURL = (app: App) => `http://localhost:${APPS[app].port}`
+// `E2E_BASE_URL` (the reusable workflow .github/workflows/compose-e2e.yml): the app is already
+// served there, so no web server is started. Run one project with it (`--project compose`).
+const external = process.env.E2E_BASE_URL
+const baseURL = (app: App) => external ?? `http://localhost:${APPS[app].port}`
 
 // `E2E_PREBUILT=1` (CI) serves the build output of `node e2e/prepare-app.mjs <app>` as it is.
 const prepare = (app: App) => (process.env.E2E_PREBUILT ? '' : `node e2e/prepare-app.mjs ${app} && `)
 
-const webServer: PlaywrightTestConfig['webServer'] = apps.map((app) => ({
+const webServer: PlaywrightTestConfig['webServer'] = (external ? [] : apps).map((app) => ({
   command: `${prepare(app)}node e2e/serve-static.mjs ${APPS[app].out} ${APPS[app].port}`,
   cwd: root,
   url: baseURL(app),

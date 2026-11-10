@@ -15,8 +15,13 @@ import {
   composeReadyWith,
   composeTap,
   composeType,
+  COMPOSE_DIAGNOSIS_ATTACHMENT,
+  diagnoseCompose,
+  formatComposeDiagnosis,
   scrollUntilVisible,
+  type ComposeDiagnosis,
 } from '../src/compose.js'
+import { composeHints } from '../src/compose/diagnose.js'
 import { scrollUntilVisible as flutterScrollUntilVisible } from '../src/flutter.js'
 import { resolveOption } from './option-helper.js'
 
@@ -64,6 +69,124 @@ describe('composeReady', () => {
     await expect(composeReady(asPage(fakePage({ root: false, nodes: false })))).rejects.toThrow(
       /within the default timeout\. There is no #cmp_a11y_root: .*isA11YEnabled = false/,
     )
+  })
+})
+
+/** Facts of a healthy Compose page; each test changes what it needs. */
+const healthy = (over: Partial<ComposeDiagnosis> = {}): Omit<ComposeDiagnosis, 'hints'> => ({
+  url: 'http://localhost/',
+  canvas: true,
+  a11yRoot: true,
+  nodeCount: 12,
+  nodesWithId: ['greet-button'],
+  nodesWithIdCount: 1,
+  nodesWithoutName: [],
+  nodesWithoutNameCount: 0,
+  pointerEvents: { root: 'auto', canvas: 'auto', nodes: ['auto'] },
+  ...over,
+})
+
+describe('composeHints', () => {
+  it('gives no hint for a healthy tree', () => {
+    expect(composeHints(healthy())).toEqual([])
+  })
+
+  it('tells isA11YEnabled = false apart from a page that is not a Compose app', () => {
+    expect(composeHints(healthy({ a11yRoot: false, nodeCount: 0 }))).toEqual([expect.stringMatching(/isA11YEnabled = false/)])
+    expect(composeHints(healthy({ canvas: false, a11yRoot: false, nodeCount: 0 }))).toEqual([
+      expect.stringMatching(/no canvas and no #cmp_a11y_root: the page is not a Compose/),
+    ])
+  })
+
+  it('tells an empty root (first composition not finished) and stops there', () => {
+    expect(composeHints(healthy({ nodeCount: 0, nodesWithIdCount: 0, nodesWithId: [] }))).toEqual([
+      expect.stringMatching(/#cmp_a11y_root is empty/),
+    ])
+  })
+
+  it('explains missing test tags, unnamed nodes and pointer-events: none together', () => {
+    const hints = composeHints(
+      healthy({
+        nodesWithId: [],
+        nodesWithIdCount: 0,
+        nodesWithoutName: ['textbox'],
+        nodesWithoutNameCount: 1,
+        pointerEvents: { root: 'auto', canvas: 'auto', nodes: ['none'] },
+      }),
+    )
+    expect(hints).toHaveLength(3)
+    expect(hints[0]).toMatch(/Modifier\.testTag.*mergeDescendants/)
+    expect(hints[1]).toMatch(/^1 node\(s\) .*contentDescription/)
+    expect(hints[2]).toMatch(/pointer-events: none.*composeTap/)
+  })
+})
+
+describe('diagnoseCompose', () => {
+  it('reads the tree in the page and adds the hints', async () => {
+    const evaluate = vi.fn(async () => healthy({ nodesWithIdCount: 0, nodesWithId: [] }))
+    const d = await diagnoseCompose(asPage({ evaluate }))
+    expect(evaluate).toHaveBeenCalledWith(expect.any(Function), expect.objectContaining({ rootId: 'cmp_a11y_root', max: 50 }))
+    expect(d.nodeCount).toBe(12)
+    expect(d.hints).toEqual([expect.stringMatching(/No node has an id/)])
+  })
+
+  it('the in-page reader finds the root and the canvas through shadow roots', async () => {
+    const evaluate = vi.fn(async () => healthy())
+    await diagnoseCompose(asPage({ evaluate }))
+    const [inspect, args] = evaluate.mock.calls[0] as unknown as [(a: unknown) => ComposeDiagnosis, unknown]
+    type El = { id: string; tagName: string; attrs: Record<string, string>; textContent: string; shadowRoot: Scope | null; kids: El[] }
+    type Scope = { querySelectorAll: () => El[] }
+    const deep = (kids: El[]): El[] => kids.flatMap((k) => [k, ...deep(k.kids)])
+    const scope = (kids: El[]): Scope => ({ querySelectorAll: () => deep(kids) })
+    const el = (tagName: string, o: Partial<Omit<El, 'tagName'>> = {}): El & { getAttribute: (n: string) => string | null; querySelectorAll: () => El[] } => {
+      const e = { id: '', attrs: {}, textContent: '', shadowRoot: null, kids: [], ...o, tagName }
+      return { ...e, getAttribute: (n: string) => e.attrs[n] ?? null, querySelectorAll: () => deep(e.kids) }
+    }
+    const nodes = [
+      el('DIV', { id: 'save', attrs: { role: 'button' }, textContent: 'Save' }),
+      el('DIV', { attrs: { role: 'button' } }),
+      el('DIV', { id: 'field', attrs: { role: 'textbox' } }),
+      el('DIV', { attrs: { role: 'textbox', 'aria-label': 'Email' } }),
+      el('DIV', { attrs: { role: 'list' } }),
+    ]
+    const root = el('DIV', { id: 'cmp_a11y_root', kids: nodes })
+    const host = el('DIV', { shadowRoot: scope([el('CANVAS'), root]) })
+    const g = globalThis as unknown as Record<string, unknown>
+    try {
+      g.document = scope([host])
+      g.location = { href: 'http://localhost/' }
+      g.getComputedStyle = (e: El) => ({ pointerEvents: e.tagName === 'CANVAS' ? 'auto' : 'none' })
+      expect(inspect(args)).toEqual({
+        url: 'http://localhost/',
+        canvas: true,
+        a11yRoot: true,
+        nodeCount: 5,
+        nodesWithId: ['save', 'field'],
+        nodesWithIdCount: 2,
+        nodesWithoutName: ['button', 'textbox#field'],
+        nodesWithoutNameCount: 2,
+        pointerEvents: { root: 'none', canvas: 'auto', nodes: ['none'] },
+      })
+      g.document = scope([])
+      expect(inspect(args)).toMatchObject({ canvas: false, a11yRoot: false, nodeCount: 0, pointerEvents: { root: null, canvas: null, nodes: [] } })
+    } finally {
+      delete g.document
+      delete g.location
+      delete g.getComputedStyle
+    }
+  })
+
+  it('formats a one-line summary with the hints', () => {
+    expect(formatComposeDiagnosis({ ...healthy(), hints: [] })).toBe('canvas, #cmp_a11y_root with 12 node(s), 1 with an id, 0 without a name.')
+    const missing = { ...healthy({ a11yRoot: false, nodeCount: 0 }), hints: ['Fix it.'] }
+    expect(formatComposeDiagnosis(missing)).toBe('canvas, no #cmp_a11y_root, 1 with an id, 0 without a name. Fix it.')
+  })
+
+  it('composeReady puts the diagnosis into the timeout error (no test running: no attachment, no throw)', async () => {
+    const page = { ...fakePage({ nodes: false }), evaluate: vi.fn(async () => healthy({ a11yRoot: false, nodeCount: 0 })) }
+    const error = (await composeReady(asPage(page), { timeout: 10 }).catch((e: Error) => e)) as Error
+    expect(COMPOSE_DIAGNOSIS_ATTACHMENT).toBe('compose-diagnosis.json')
+    expect(error.message).toMatch(/within 10 ms\. Diagnosis \(attached as compose-diagnosis\.json\): canvas, no #cmp_a11y_root.*isA11YEnabled = false/)
   })
 })
 
