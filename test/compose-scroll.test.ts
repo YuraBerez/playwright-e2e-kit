@@ -97,6 +97,24 @@ describe('composeScrollUntilVisible', () => {
     expect(String(error)).toMatch(/item is not on screen, and the list in list did not move on step 4 \(down, wheel\): it is at its end\..*mode: 'drag'/)
   })
 
+  it('does not call the end after one still step (a lazy list that loads more)', async () => {
+    // The first wheel is lost while the list loads; the repeat scrolls.
+    const g = fakeList({ from: 300 })
+    const real = g.mouse.wheel.getMockImplementation()!
+    let n = 0
+    g.mouse.wheel.mockImplementation(async (dx: number, dy: number) => {
+      if (++n > 1) await real(dx, dy)
+    })
+    await composeScrollUntilVisible(g.locator, { within: g.within, settleTimeout: 100 })
+    expect(n).toBe(2)
+  })
+
+  it('caps a wheel step at 90% of the scrollable', async () => {
+    const f = fakeList({ from: 1000 })
+    await composeScrollUntilVisible(f.locator, { within: f.within, step: 5000 })
+    expect(f.mouse.wheel.mock.calls[0]![1]).toBe(450)
+  })
+
   it('suggests no other mode when a drag reaches the end', async () => {
     const f = fakeList({ from: 99_999, moves: false })
     const error = await composeScrollUntilVisible(f.locator, { within: f.within, mode: 'drag', settleTimeout: 100 }).catch((e: Error) => e)

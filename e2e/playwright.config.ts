@@ -83,6 +83,14 @@ export default defineE2EConfig({
         ...devices[device],
         ...(app === 'flutter' ? flutterUse : {}),
         ...(app === 'compose' ? composeUse : {}),
+        // Skiko draws with WebGL. Headless Firefox on a CI runner has no GPU: force software WebGL.
+        ...(device === 'Desktop Firefox'
+          ? {
+              launchOptions: {
+                firefoxUserPrefs: { 'webgl.force-enabled': true, 'webgl.disabled': false, 'gfx.webrender.software': true, 'layers.acceleration.disabled': true },
+              },
+            }
+          : {}),
         baseURL: baseURL(app),
       },
     })),

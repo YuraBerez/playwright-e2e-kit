@@ -122,9 +122,12 @@ export async function scrollComposeUntilVisible(page, locator, options = {}) {
     let box = await area();
     if (await onScreen(box))
         return;
+    // A list that loads more items may not move on the first step: confirm the end with a second still step.
+    let stillSteps = 0;
     for (let n = 1; n <= maxSteps; n++) {
         const size = axis === 'y' ? box.height : box.width;
-        const distance = Math.abs(options.step ?? size * 0.8);
+        // A step never exceeds 90% of the scrollable, so no item is skipped between two steps.
+        const distance = Math.min(Math.abs(options.step ?? size * 0.8), size * 0.9);
         const cx = box.x + box.width / 2;
         const cy = box.y + box.height / 2;
         const before = await snapshot(page, options.within);
@@ -134,7 +137,7 @@ export async function scrollComposeUntilVisible(page, locator, options = {}) {
         }
         else {
             // The finger moves against the scroll direction. It stays inside the scrollable.
-            const half = Math.min(distance, size * 0.9) / 2;
+            const half = distance / 2;
             const dx = axis === 'x' ? sign * half : 0;
             const dy = axis === 'y' ? sign * half : 0;
             await touchDrag(page, { x: cx + dx, y: cy + dy }, { x: cx - dx, y: cy - dy });
@@ -154,6 +157,12 @@ export async function scrollComposeUntilVisible(page, locator, options = {}) {
             if ((moved && now === last) || Date.now() >= deadline)
                 break;
             last = now;
+        }
+        if (moved)
+            stillSteps = 0;
+        else if (++stillSteps < 2) {
+            n--;
+            continue;
         }
         if (!moved) {
             throw new Error(`composeScrollUntilVisible: ${locator} is not on screen, and the list ${where} did not move on step ${n} (${way}): ` +

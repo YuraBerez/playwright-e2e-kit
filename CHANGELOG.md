@@ -9,6 +9,9 @@ Additive: only apps that import `playwright-e2e-kit/compose` see a change.
 
 ### Added
 
+- `composeScrollUntilVisible`: the end of a list needs two still steps in a row (a lazy list may load
+  more items first), and a wheel step is capped at 90% of the scrollable, like a drag step (#19).
+
 - Reusable workflow `.github/workflows/compose-e2e.yml` (`workflow_call`) for Compose
   Multiplatform web e2e tests: JDK 21 and Gradle cache, `wasmJsBrowserDistribution` with a
   separate Gradle root (`gradle-dir`) and web module (`app-dir`), a static server with a base path
