@@ -1,8 +1,8 @@
 import { EventEmitter } from 'node:events'
 import { describe, expect, it, vi } from 'vitest'
-import { CleanupRegistry } from '../src/data.js'
-import { ErrorGuard } from '../src/error-guard.js'
-import { cleanupFixture, errorGuardFixture, resourceFixture } from '../src/fixtures.js'
+import { CleanupRegistry } from '../src/core/data.js'
+import { ErrorGuard } from '../src/core/error-guard.js'
+import { cleanupFixture, errorGuardFixture, resourceFixture } from '../src/core/fixtures.js'
 
 const noDeps = { browserName: 'chromium' }
 

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { isAllowed, type CollectedError } from '../src/error-guard.js'
+import { isAllowed, type CollectedError } from '../src/core/error-guard.js'
 import { flutterErrorAllowList } from '../src/flutter.js'
 
 const err = (kind: CollectedError['kind'], text: string, url = ''): CollectedError => ({ kind, text, url })

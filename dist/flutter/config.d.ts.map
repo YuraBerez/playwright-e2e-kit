@@ -1,0 +1,1 @@
+{"version":3,"file":"config.d.ts","sourceRoot":"","sources":["../../src/flutter/config.ts"],"names":[],"mappings":"AAAA,OAAO,KAAK,EAAE,oBAAoB,EAAE,MAAM,kBAAkB,CAAA;AAC5D,OAAO,EAAmB,KAAK,gBAAgB,EAAE,MAAM,mBAAmB,CAAA;AAG1E,yEAAyE;AACzE,eAAO,MAAM,yBAAyB,6BAA6B,CAAA;AAEnE;;;;;GAKG;AACH,wBAAgB,aAAa,CAAC,MAAM,GAAE,oBAAyB,EAAE,OAAO,GAAE,gBAAqB,GAAG,oBAAoB,CAKrH"}

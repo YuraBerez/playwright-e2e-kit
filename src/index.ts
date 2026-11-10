@@ -1,5 +1,5 @@
-export { BaseComponent, BaseScreen, escapeRegExp } from './screen.js'
-export { BaseSteps, boxSteps, humanize, stepTitle } from './steps.js'
+export { BaseComponent, BaseScreen, escapeRegExp } from './core/screen.js'
+export { BaseSteps, boxSteps, humanize, stepTitle } from './core/steps.js'
 export {
   CSP_VIOLATION_SCRIPT,
   ErrorGuard,
@@ -11,10 +11,10 @@ export {
   type CollectedError,
   type ErrorGuardOptions,
   type ErrorKind,
-} from './error-guard.js'
-export { CleanupRegistry, formatCleanupFailures, type CleanupFailure, type ResourceFactory } from './data.js'
-export { appReadyFixture, cleanupFixture, errorGuardFixture, resourceFixture, type CleanupFixtureOptions } from './fixtures.js'
-export { DEFAULT_LOCALE, DEFAULT_TIMEZONE, deterministicUse, type Determinism } from './determinism.js'
+} from './core/error-guard.js'
+export { CleanupRegistry, formatCleanupFailures, type CleanupFailure, type ResourceFactory } from './core/data.js'
+export { appReadyFixture, cleanupFixture, errorGuardFixture, resourceFixture, type CleanupFixtureOptions } from './core/fixtures.js'
+export { DEFAULT_LOCALE, DEFAULT_TIMEZONE, deterministicUse, type Determinism } from './core/determinism.js'
 export {
   angularReady,
   appReadyOption,
@@ -24,4 +24,4 @@ export {
   setAppReady,
   type AppReady,
   type AppReadyOption,
-} from './app-ready.js'
+} from './core/app-ready.js'

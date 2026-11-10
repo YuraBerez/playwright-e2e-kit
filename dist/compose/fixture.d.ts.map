@@ -1,0 +1,1 @@
+{"version":3,"file":"fixture.d.ts","sourceRoot":"","sources":["../../src/compose/fixture.ts"],"names":[],"mappings":"AAAA,OAAO,EAAkB,KAAK,cAAc,EAAE,MAAM,sBAAsB,CAAA;AAI1E;;;;GAIG;AACH,wBAAgB,cAAc;cAIoC,CAAC,SAAS,GAAG,cAAc,EAAE;QAAE,MAAM,EAAE,IAAI,CAAA;KAAE,CAAC;;;;;EAE/G"}

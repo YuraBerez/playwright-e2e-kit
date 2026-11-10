@@ -23,3 +23,4 @@ export declare const NON_ACCESSIBLE_APIS: readonly string[];
 export declare const PAGE_SELECTOR_METHODS: readonly string[];
 /** Builds the flat-config array. Spread it into the app's `eslint.config`. */
 export declare function e2eLayerRules(options?: E2ELayerRulesOptions): Linter.Config[];
+//# sourceMappingURL=eslint.d.ts.map

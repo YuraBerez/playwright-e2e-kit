@@ -8,7 +8,7 @@ import {
   isBenignAbort,
   isClientErrorEcho,
   type AllowedError,
-} from '../src/error-guard.js'
+} from '../src/core/error-guard.js'
 
 type Context = Parameters<ErrorGuard['watch']>[0]
 

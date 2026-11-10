@@ -1,5 +1,5 @@
 import { type Page } from '@playwright/test';
-import { BaseSteps } from './steps.js';
+import { BaseSteps } from './core/steps.js';
 /** WCAG 2.0 and 2.1, levels A and AA. */
 export declare const WCAG_A_AA_TAGS: readonly string[];
 /** Fields every exclusion shares. */
@@ -80,3 +80,4 @@ export declare class A11ySteps extends BaseSteps {
     expectNoViolations(): Promise<void>;
 }
 export {};
+//# sourceMappingURL=a11y.d.ts.map
