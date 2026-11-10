@@ -4,6 +4,7 @@ export { COMPOSE_A11Y_ROOT, composeReady, composeReadyWith, type ComposeReadyOpt
 export { COMPOSE_BACKING_FIELD_CLASS, composeClear, composeReadText, composeTap, composeType, type ComposeClearOptions, type ComposeTapOptions, type ComposeTypeOptions, } from './compose/input.js';
 export { composeScrollUntilVisible, type ComposeScrollOptions } from './compose/scroll.js';
 export { ComposeScreen } from './compose/screen.js';
+export { COMPOSE_DIAGNOSIS_ATTACHMENT, diagnoseCompose, formatComposeDiagnosis, type ComposeDiagnosis, } from './compose/diagnose.js';
 export { scrollUntilVisible, type ScrollUntilVisibleOptions } from './canvas/scroll.js';
 export { composeErrorAllowList } from './compose/allow-list.js';
 //# sourceMappingURL=compose.d.ts.map

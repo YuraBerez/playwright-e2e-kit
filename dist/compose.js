@@ -6,6 +6,7 @@ export { COMPOSE_A11Y_ROOT, composeReady, composeReadyWith } from './compose/rea
 export { COMPOSE_BACKING_FIELD_CLASS, composeClear, composeReadText, composeTap, composeType, } from './compose/input.js';
 export { composeScrollUntilVisible } from './compose/scroll.js';
 export { ComposeScreen } from './compose/screen.js';
+export { COMPOSE_DIAGNOSIS_ATTACHMENT, diagnoseCompose, formatComposeDiagnosis, } from './compose/diagnose.js';
 export { scrollUntilVisible } from './canvas/scroll.js';
 export { composeErrorAllowList } from './compose/allow-list.js';
 //# sourceMappingURL=compose.js.map

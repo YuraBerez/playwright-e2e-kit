@@ -15,5 +15,11 @@ export {
 } from './compose/input.js'
 export { composeScrollUntilVisible, type ComposeScrollOptions } from './compose/scroll.js'
 export { ComposeScreen } from './compose/screen.js'
+export {
+  COMPOSE_DIAGNOSIS_ATTACHMENT,
+  diagnoseCompose,
+  formatComposeDiagnosis,
+  type ComposeDiagnosis,
+} from './compose/diagnose.js'
 export { scrollUntilVisible, type ScrollUntilVisibleOptions } from './canvas/scroll.js'
 export { composeErrorAllowList } from './compose/allow-list.js'

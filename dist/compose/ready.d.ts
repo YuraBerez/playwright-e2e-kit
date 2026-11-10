@@ -18,6 +18,9 @@ export interface ComposeReadyOptions {
  * Compose sends no "first frame" event, so nothing must be installed before navigation. The tree
  * needs no activation: it is on by default (`isA11YEnabled = true`). An app that sets
  * `isA11YEnabled = false` has no tree, and this hook fails with an error that says so.
+ *
+ * On a timeout it runs `diagnoseCompose(page)`, adds its summary to the error and attaches it to
+ * the test as `compose-diagnosis.json`.
  */
 export declare const composeReady: (page: Page, options?: ComposeReadyOptions) => Promise<void>;
 /** `composeReady` with fixed options, as an `AppReady`. */
