@@ -22,6 +22,12 @@ see no change). All items below go into it.
   stable, else for the root `ng-version` attribute; works for zoneless apps) (#5).
 - README: Flutter web guide, framework matrix (React / Vue / Nuxt / Angular / Flutter web / Kotlin
   web), and typed doc examples in `test/doc-examples/` that `npm run type-check` compiles (#6).
+- Opt-in `playwright-e2e-kit/compose` entry for Compose Multiplatform web (wasmJs, canvas):
+  `composeConfig` (`testIdAttribute: 'id'`, because `Modifier.testTag` becomes the DOM `id`),
+  `composeFixture`, `composeReady` (first node of the `#cmp_a11y_root` tree), `ComposeScreen`,
+  `composeTap` / `composeType` (the canvas intercepts pointer events; `fill()` works in Chromium
+  only), `composeErrorAllowList` (WebKit WebGL debug-info console error). `scrollUntilVisible`
+  moves to a shared module; the `playwright-e2e-kit/flutter` export does not change (#10).
 
 ### Fixed (found by the real-browser suite, before any release)
 

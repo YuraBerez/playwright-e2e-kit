@@ -28,6 +28,10 @@
       "types": "./dist/config.d.ts",
       "default": "./dist/config.js"
     },
+    "./compose": {
+      "types": "./dist/compose.d.ts",
+      "default": "./dist/compose.js"
+    },
     "./eslint": {
       "types": "./dist/eslint.d.ts",
       "default": "./dist/eslint.js"

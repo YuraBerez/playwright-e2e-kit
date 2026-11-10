@@ -30,6 +30,7 @@ version.
 | `playwright-e2e-kit/config` | `defineE2EConfig`, `baseConfig`, `quarantineGrepInvert` |
 | `playwright-e2e-kit/eslint` | `e2eLayerRules()` (flat config) |
 | `playwright-e2e-kit/flutter` | Flutter web only (opt-in; the main entry never imports it): `flutterConfig`, `flutterFixture`, `flutterReady`, `enableFlutterSemantics`, `installFlutterFirstFrameListener`, `FlutterScreen`, `scrollUntilVisible`, `flutterErrorAllowList` |
+| `playwright-e2e-kit/compose` | Compose Multiplatform web (wasmJs) only (opt-in; no other entry imports it): `composeConfig`, `composeFixture`, `composeReady`, `composeTap`, `composeType`, `ComposeScreen`, `scrollUntilVisible`, `composeErrorAllowList` |
 
 ## Layout
 
@@ -417,6 +418,126 @@ export const makeA11y = (page: Page) => new A11ySteps(page, { exclusions })
   network fails the first load. Self-host them in the Flutter build, or use
   `flutterErrorAllowList` and accept the font fallback.
 
+## Compose Multiplatform web (`playwright-e2e-kit/compose`)
+
+Kotlin Multiplatform (KMP) web builds come in two kinds:
+
+- **Kotlin/JS with Compose HTML** renders real DOM elements. Use the default config, as for React:
+  no entry point, no preset.
+- **Compose Multiplatform web (wasmJs)** draws on a `<canvas>`. Use the opt-in entry point
+  `playwright-e2e-kit/compose`. An app that does not import it sees no change: the default
+  `testIdAttribute` stays `data-testid`, and `BaseScreen` adds no wait. No other entry point
+  imports the Compose modules (a test checks it).
+
+Native iOS / Android targets of a KMP app are out of scope: Playwright drives only a browser.
+
+### Config, fixtures and screens
+
+```ts
+// playwright.config.ts
+import { composeConfig } from 'playwright-e2e-kit/compose'
+
+export default composeConfig({ testDir: './e2e', use: { baseURL: 'http://localhost:8080' } })
+```
+
+```ts
+// fixtures/app.ts
+import { test as base } from '@playwright/test'
+import { errorGuardFixture, type AppReady, type ErrorGuard } from 'playwright-e2e-kit'
+import { composeErrorAllowList, composeFixture } from 'playwright-e2e-kit/compose'
+
+export const test = base.extend<{ appReady: AppReady | undefined; errorGuard: ErrorGuard }>({
+  ...composeFixture(), // instead of appReadyFixture()
+  errorGuard: errorGuardFixture({ allow: composeErrorAllowList }),
+})
+```
+
+```ts
+// screens/form.screen.ts
+import { ComposeScreen } from 'playwright-e2e-kit/compose'
+
+export class FormScreen extends ComposeScreen {
+  readonly path = '/'
+  private readonly email = this.page.getByTestId('email-field')
+  private readonly submit = this.page.getByRole('button', { name: 'Submit' })
+  private readonly list = this.page.getByTestId('items-list')
+  private item(n: number) {
+    return this.page.getByTestId(`item-${n}`)
+  }
+
+  async sendEmail(value: string): Promise<void> {
+    await this.typeText(this.email, value)
+    await this.tap(this.submit)
+  }
+
+  async openItem(n: number): Promise<void> {
+    await this.scrollUntilVisible(this.item(n), { within: this.list })
+    await this.tap(this.item(n))
+  }
+}
+```
+
+- **`composeConfig(config, options)`** is `defineE2EConfig()` plus `use.testIdAttribute: 'id'`
+  and `appReady: composeReady`. The app's `use` and `options` win.
+- **`composeReady`** (an `AppReady`) waits for the first node in `#cmp_a11y_root`, the
+  accessibility tree that Compose builds next to its canvas after the first composition.
+  `composeReadyWith({ timeout })` sets the timeout. Compose sends no "first frame" event, so
+  nothing must be installed before navigation, and the tree needs no activation. A timeout error
+  tells whether the root is missing (not a Compose app, or `isA11YEnabled = false`) or empty.
+- **`composeFixture()`** sets the `appReady` option to `composeReady` (wrapped with
+  `appReadyOption`).
+- **`ComposeScreen`** extends `BaseScreen` (which does not change). It waits with the page's
+  app-ready hook, or with `composeReady` when none is set. It gives the subclasses `tap()`,
+  `typeText()` and `scrollUntilVisible()`. Locators stay `private`.
+- **`tap(locator)` / `composeTap(locator)`:** the accessibility nodes have
+  `pointer-events: none` and the canvas is on top, so a plain `click()` waits until it times out
+  ("canvas intercepts pointer events"). `tap` waits until the node is visible, then clicks the
+  centre of its box with `force: true`. The pointer events go to the canvas, and Compose hit-tests
+  them as for a user.
+- **`typeText(locator, text)` / `composeType(locator, text, { clear })`** taps the field, waits
+  until Compose focuses its hidden backing `<textarea>`, clears it (select all + Backspace; set
+  `clear: false` to keep the text) and types with the keyboard. `fill()` on the field reaches the
+  app in Chromium only, so do not use it.
+- **`scrollUntilVisible`** is the same helper as in `playwright-e2e-kit/flutter`. A `LazyColumn`
+  has only its visible items in the tree.
+- **`composeErrorAllowList`** has one entry: WebKit logs Skiko's `WEBGL_debug_renderer_info`
+  probe as a console error. Chromium logs it as a warning.
+
+### How the app exposes composables
+
+Compose Multiplatform 1.12 (wasmJs) mirrors the semantics tree into hidden `<div>` nodes inside
+the viewport's open shadow root. Playwright locators pierce it.
+
+| In the app (Compose) | In the DOM | Locator |
+|---|---|---|
+| `Modifier.testTag("submit")` | `id="submit"` | `getByTestId('submit')` with `composeConfig()` |
+| `Button(…) { Text("Submit") }` | `role="button"`, text `Submit` | `getByRole('button', { name: 'Submit' })` |
+| `Modifier.clickable { … }.semantics { contentDescription = "Add" }` | `role="button"`, `aria-label="Add"` | `getByRole('button', { name: 'Add' })` |
+| `Text("Hello")` | text of a `<div>` (no role) | `getByText('Hello')` |
+| `Modifier.semantics { heading() }` | `role="heading"` | `getByRole('heading', { name })` |
+| `TextField(…)` | `role="textbox"`, `contenteditable`, the value as text | `getByTestId(…)`, or `getByRole('textbox', { name })` with a `contentDescription` |
+| `LazyColumn` | `role="list"`; items have no role | `getByTestId(…)` on the list and the items |
+
+The test tag is the DOM `id`, so keep it unique on the screen. Prefer roles and text; add a test
+tag only when no accessible locator exists.
+
+### Gaps of the Compose web tree
+
+- **Text fields have no accessible name:** the `label` of a `TextField` is not exposed. Add
+  `Modifier.semantics { contentDescription = "Email" }` (it becomes `aria-label`) or a test tag.
+- **No state attributes:** `enabled`, checked, selected and toggle states are not mapped to
+  `aria-*`. `toBeDisabled()` / `toBeChecked()` do not work; check the visible result instead. A
+  tap on a disabled button goes through the canvas, and Compose ignores it as for a user.
+- **Role from a click action:** every node with a click action gets `role="button"`.
+- **Accessibility audit:** axe audits the tree. Compose itself produces some WCAG A violations:
+  `aria-roles` on the `<canvas>` (`role="generic"`), `aria-required-attr` on headings (no
+  `aria-level`) and `aria-required-children` on lists (no `listitem`). The app cannot fix them;
+  add one exclusion per rule and node (for example `rule: 'aria-roles'` with
+  `selectorPattern: /^canvas$/`) and give the upstream epic CMP-9678 (JetBrains YouTrack) as the
+  `issue`.
+- **Turned off:** an app that sets `isA11YEnabled = false` in `ComposeViewport` has no tree.
+  Then the kit cannot find composables.
+
 ## Framework matrix
 
 What an app gets with no extra code ("default") and what it turns on ("opt-in", with the import
@@ -424,15 +545,15 @@ or option named in the cell).
 
 | Feature | React | Vue | Nuxt | Angular | Flutter web | Kotlin/JS + Compose HTML | Compose Multiplatform web (wasmJs, canvas) |
 |---|---|---|---|---|---| ---|---|
-| App-ready hook (`BaseScreen.open()`) | default: none (`goto` only); own `AppReady` or `domContentReady` opt-in | same as React | default: none; `nuxtReady` opt-in | default: none; `angularReady` opt-in (added in #5, planned for 0.2.0) | on with `flutterConfig()` / `flutterFixture()` (`flutterReady`); none otherwise | default: none, as React | planned (#10, `playwright-e2e-kit/compose`) |
-| `testIdAttribute` | `data-testid` | `data-testid` | `data-testid` | `data-testid` | `flt-semantics-identifier` with `flutterConfig()`; `data-testid` otherwise | `data-testid` | planned (#10) |
-| Error-guard allow list | default: empty (`errorGuardFixture({ allow })`) | same | same | same | `flutterErrorAllowList`, opt-in | default: empty | planned (#10) |
-| Accessibility (`A11ySteps`) | axe on the DOM; exclusions by `selector` | same | same | same | same engine; exclusions by `attribute` / `selectorPattern` on `flt-semantics` nodes; canvas content not audited | same as React (DOM) | planned (#10) |
-| Scrolling | Playwright auto-scroll | same | same | same | `scrollUntilVisible` (virtualised lists, wheel based), opt-in | Playwright auto-scroll | planned (#10) |
-| Entry point | `playwright-e2e-kit` | `playwright-e2e-kit` | `playwright-e2e-kit` | `playwright-e2e-kit` | `playwright-e2e-kit/flutter` | `playwright-e2e-kit` | planned: `playwright-e2e-kit/compose` (#10) |
+| App-ready hook (`BaseScreen.open()`) | default: none (`goto` only); own `AppReady` or `domContentReady` opt-in | same as React | default: none; `nuxtReady` opt-in | default: none; `angularReady` opt-in (added in #5, planned for 0.2.0) | on with `flutterConfig()` / `flutterFixture()` (`flutterReady`); none otherwise | default: none, as React | on with `composeConfig()` / `composeFixture()` (`composeReady`); none otherwise |
+| `testIdAttribute` | `data-testid` | `data-testid` | `data-testid` | `data-testid` | `flt-semantics-identifier` with `flutterConfig()`; `data-testid` otherwise | `data-testid` | `id` (from `Modifier.testTag`) with `composeConfig()`; `data-testid` otherwise |
+| Error-guard allow list | default: empty (`errorGuardFixture({ allow })`) | same | same | same | `flutterErrorAllowList`, opt-in | default: empty | `composeErrorAllowList`, opt-in |
+| Accessibility (`A11ySteps`) | axe on the DOM; exclusions by `selector` | same | same | same | same engine; exclusions by `attribute` / `selectorPattern` on `flt-semantics` nodes; canvas content not audited | same as React (DOM) | same engine on the hidden `#cmp_a11y_root` tree; exclusions for the Compose-generated `aria-roles` / `aria-required-attr` / `aria-required-children` violations; canvas content not audited |
+| Scrolling | Playwright auto-scroll | same | same | same | `scrollUntilVisible` (virtualised lists, wheel based), opt-in | Playwright auto-scroll | `scrollUntilVisible` (lazy lists, wheel based), opt-in |
+| Entry point | `playwright-e2e-kit` | `playwright-e2e-kit` | `playwright-e2e-kit` | `playwright-e2e-kit` | `playwright-e2e-kit/flutter` | `playwright-e2e-kit` | `playwright-e2e-kit/compose` |
 
 Kotlin/JS with Compose HTML renders real DOM, so it behaves like React. Compose Multiplatform for
-web (wasmJs) draws on a canvas like Flutter; its preset is planned in #10. Native iOS and Android
+web (wasmJs) draws on a canvas like Flutter; it uses the opt-in `playwright-e2e-kit/compose` preset. Native iOS and Android
 apps are out of scope: Playwright drives only a browser.
 
 React, Vue and Angular apps have no default wait. Pass your own `AppReady` or the ready-made hook
