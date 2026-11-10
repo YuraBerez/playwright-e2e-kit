@@ -1,6 +1,6 @@
 {
   "name": "playwright-e2e-kit",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "Project-agnostic Playwright e2e kit: layered screens, steps and specs, boxed test.step phases, a browser error guard, an axe accessibility step, data-layer cleanup and ESLint layer rules.",
   "license": "MIT",
   "type": "module",
