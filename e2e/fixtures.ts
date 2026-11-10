@@ -8,6 +8,7 @@ import {
   type CleanupRegistry,
   type ErrorGuard,
 } from 'playwright-e2e-kit'
+import { composeErrorAllowList, composeFixture } from 'playwright-e2e-kit/compose'
 import { flutterErrorAllowList, flutterFixture } from 'playwright-e2e-kit/flutter'
 import { recordFactory, type TestRecord } from './data.js'
 
@@ -30,6 +31,14 @@ export const webTest = base.extend<SuiteFixtures>({
 export const flutterTest = base.extend<SuiteFixtures>({
   ...flutterFixture(),
   errorGuard: errorGuardFixture({ allow: flutterErrorAllowList }),
+  cleanup: cleanupFixture({ onFailure: 'throw' }),
+  record: resourceFixture(recordFactory),
+})
+
+/** Compose Multiplatform web: `composeFixture()` instead of `appReadyFixture()`, and the Compose allow-list. */
+export const composeTest = base.extend<SuiteFixtures>({
+  ...composeFixture(),
+  errorGuard: errorGuardFixture({ allow: composeErrorAllowList }),
   cleanup: cleanupFixture({ onFailure: 'throw' }),
   record: resourceFixture(recordFactory),
 })

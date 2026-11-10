@@ -14,8 +14,8 @@ export interface SuiteOptions {
 
 /**
  * The suite that runs unchanged on every fixture app: open (through `BaseScreen` /
- * `FlutterScreen`), a verb, a verify, the error guard (auto fixture: a clean run is the check),
- * the axe step, and the data layer (resource fixture + cleanup registry).
+ * `FlutterScreen` / `ComposeScreen`), a verb, a verify, the error guard (auto fixture: a clean run
+ * is the check), the axe step, and the data layer (resource fixture + cleanup registry).
  */
 export function greeterSuite(test: SuiteTest, options: SuiteOptions): void {
   test.afterAll(() => {

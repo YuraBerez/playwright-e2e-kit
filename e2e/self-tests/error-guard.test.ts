@@ -2,10 +2,12 @@
 // fixture app. It watches its own context, so the auto guard of the test stays clean.
 import { expect, test } from '@playwright/test'
 import { ErrorGuard } from 'playwright-e2e-kit'
+import { composeErrorAllowList } from 'playwright-e2e-kit/compose'
 import { flutterErrorAllowList } from 'playwright-e2e-kit/flutter'
 
 test('the error guard reports a page error and a console error', async ({ browser, baseURL }, testInfo) => {
-  const guard = new ErrorGuard({ allow: testInfo.project.name === 'flutter' ? flutterErrorAllowList : [] })
+  const allow = { flutter: flutterErrorAllowList, compose: composeErrorAllowList }[testInfo.project.name] ?? []
+  const guard = new ErrorGuard({ allow })
   const context = await browser.newContext({ baseURL })
   try {
     await guard.watch(context)

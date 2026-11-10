@@ -534,7 +534,9 @@ tag only when no accessible locator exists.
   `aria-level`) and `aria-required-children` on lists (no `listitem`). The app cannot fix them;
   add one exclusion per rule and node (for example `rule: 'aria-roles'` with
   `selectorPattern: /^canvas$/`) and give the upstream epic CMP-9678 (JetBrains YouTrack) as the
-  `issue`.
+  `issue`. The nodes are in a shadow root, so axe gives a nested target (host, then node);
+  `selector` and `selectorPattern` match each part of it. The fixture's spec
+  (`e2e/specs/compose.spec.ts`) has the three exclusions.
 - **Turned off:** an app that sets `isA11YEnabled = false` in `ComposeViewport` has no tree.
   Then the kit cannot find composables.
 
@@ -644,12 +646,13 @@ committed, so it cannot name a product either.
 
 ## Release checklist
 
-The kit runs its own suite in a real Chromium against four fixture apps
-(`test/fixtures-apps/`: React, Vue, Angular, Flutter web), with `npm run test:e2e`
-(`E2E_APP=<app>` for one app; Flutter needs the `flutter` SDK). Before you push a `v*` tag:
+The kit runs its own suite in a real Chromium against five fixture apps
+(`test/fixtures-apps/`: React, Vue, Angular, Flutter web, Compose Multiplatform web), with
+`npm run test:e2e` (`E2E_APP=<app>` for one app; Flutter needs the `flutter` SDK, Compose needs a
+JDK 21 in `JAVA_HOME` and builds with its Gradle wrapper). Before you push a `v*` tag:
 
-1. CI on the release commit is green: the `gate` job and **all four** `e2e` jobs (react, vue,
-   angular, flutter).
+1. CI on the release commit is green: the `gate` job and **all five** `e2e` jobs (react, vue,
+   angular, flutter, compose).
 2. `dist/` matches the sources (`npm run lint` checks it).
 3. A change that breaks a consumer has a new major version.
 

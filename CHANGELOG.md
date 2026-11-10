@@ -28,6 +28,10 @@ see no change). All items below go into it.
   `composeTap` / `composeType` (the canvas intercepts pointer events; `fill()` works in Chromium
   only), `composeErrorAllowList` (WebKit WebGL debug-info console error). `scrollUntilVisible`
   moves to a shared module; the `playwright-e2e-kit/flutter` export does not change (#10).
+- Compose Multiplatform web (wasmJs) fixture app (`test/fixtures-apps/compose/`, Gradle wrapper,
+  pinned Kotlin 2.3.21 / Compose 1.12.2 / Gradle 8.14.6) in the real-browser suite, with
+  `composeConfig`, `ComposeScreen` and `composeErrorAllowList`, and a `compose` job in the CI e2e
+  matrix (JDK 21). The release checklist needs all five e2e jobs green (#11).
 
 ### Fixed (found by the real-browser suite, before any release)
 
@@ -36,6 +40,11 @@ see no change). All items below go into it.
   `flutterConfig` and `flutterFixture` use it (#5).
 - An `attribute` a11y exclusion never matched a node that axe targets by its `id` (every Flutter
   semantics node); the element's opening tag is now checked too (#5).
+- An a11y exclusion never matched a node inside a shadow root (every Compose Multiplatform web
+  node): axe gives its target as a nested array. `selector` and `selectorPattern` now also match
+  each part of it; the joined form matches as before (#11).
+- `check:no-product-refs` skips the URL check for the generated Gradle wrapper files and
+  `yarn.lock` files, as for the other lockfiles; they still get the deny-list check (#11).
 
 ### Release plan
 

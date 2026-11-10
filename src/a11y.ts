@@ -70,9 +70,18 @@ export function htmlHasAttribute(html: string | undefined, attribute: string): b
   return tag.includes(` ${m[1]}="${v}"`)
 }
 
+/**
+ * The strings an exclusion is tested against for one target part. axe gives an element inside a
+ * shadow root (Compose Multiplatform web, web components) as a nested array, one selector per
+ * shadow host: it is matched as a whole (joined, as before) and part by part.
+ */
+function targetStrings(target: unknown): string[] {
+  return Array.isArray(target) ? [String(target), ...target.map(String)] : [String(target)]
+}
+
 /** True when the exclusion selects the node, through one of its target parts or its element. */
 function nodeMatches(x: A11yExclusion, node: A11yViolation['nodes'][number]): boolean {
-  if (node.target.some((t) => targetMatches(x, String(t)))) return true
+  if (node.target.some((t) => targetStrings(t).some((part) => targetMatches(x, part)))) return true
   return x.attribute !== undefined && htmlHasAttribute(node.html, x.attribute)
 }
 

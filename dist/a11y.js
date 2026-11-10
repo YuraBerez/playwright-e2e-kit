@@ -29,9 +29,17 @@ export function htmlHasAttribute(html, attribute) {
     const v = value.replace(/&/g, '&amp;').replace(/"/g, '&quot;');
     return tag.includes(` ${m[1]}="${v}"`);
 }
+/**
+ * The strings an exclusion is tested against for one target part. axe gives an element inside a
+ * shadow root (Compose Multiplatform web, web components) as a nested array, one selector per
+ * shadow host: it is matched as a whole (joined, as before) and part by part.
+ */
+function targetStrings(target) {
+    return Array.isArray(target) ? [String(target), ...target.map(String)] : [String(target)];
+}
 /** True when the exclusion selects the node, through one of its target parts or its element. */
 function nodeMatches(x, node) {
-    if (node.target.some((t) => targetMatches(x, String(t))))
+    if (node.target.some((t) => targetStrings(t).some((part) => targetMatches(x, part))))
         return true;
     return x.attribute !== undefined && htmlHasAttribute(node.html, x.attribute);
 }

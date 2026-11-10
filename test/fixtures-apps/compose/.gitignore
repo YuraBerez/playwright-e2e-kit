@@ -1,0 +1,6 @@
+# Gradle and Kotlin build output (built in CI by e2e/prepare-app.mjs, never committed)
+.gradle/
+.kotlin/
+build/
+*.iml
+.idea/
