@@ -93,6 +93,14 @@ describe('isAllowed', () => {
     expect(isAllowed(err, [{ kind: 'pageerror', message: 'ResizeObserver', reason: 'r' }])).toBe(false)
     expect(isAllowed(err, [{ kind: 'console', message: 'other', reason: 'r' }])).toBe(false)
   })
+  it('matches any kind of a kind list, and only those', () => {
+    const rule: AllowedError = { kind: ['console', 'requestfailed'], message: 'cdn.example.com', reason: 'r' }
+    expect(isAllowed(err, [rule])).toBe(true)
+    expect(isAllowed({ ...err, kind: 'requestfailed' }, [rule])).toBe(true)
+    expect(isAllowed({ ...err, kind: 'pageerror' }, [rule])).toBe(false)
+    expect(isAllowed({ ...err, kind: 'response5xx' }, [rule])).toBe(false)
+    expect(isAllowed(err, [{ ...rule, kind: [] }])).toBe(false)
+  })
   it('matches RegExp against text or URL', () => {
     expect(isAllowed(err, [{ kind: 'console', message: /loop$/, reason: 'r' }])).toBe(true)
     expect(isAllowed(err, [{ kind: 'console', message: /w\.js$/, reason: 'r' }])).toBe(true)

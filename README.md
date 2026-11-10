@@ -270,7 +270,9 @@ this test and, with `times`, only that many errors. `networkFault` uses it.
 
 **Allow-list hook:** `errorGuardFixture({ allow })` takes `{ kind, message, reason }` entries
 (`message` is a substring or a RegExp, tested against the message and the URL). Keep the list
-empty if possible. Each entry needs a reason and a tracking issue.
+empty if possible. Each entry needs a reason and a tracking issue. `kind` is one kind or a list
+(`kind: ['console', 'requestfailed', 'pageerror']`), so one entry covers a third-party origin that
+fails in several ways.
 
 **Flutter web (opt-in):** `import { flutterErrorAllowList } from 'playwright-e2e-kit/flutter'` and
 pass it as `errorGuardFixture({ allow: flutterErrorAllowList })`. It allows only known noise
