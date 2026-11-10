@@ -8,13 +8,20 @@ export const FLUTTER_FIRST_FRAME_FLAG = '__e2eKitFlutterFirstFrame';
  * `flutter-first-frame` event in a window flag. It is idempotent in one document.
  */
 function firstFrameScript(flag) {
-    const w = window;
-    if (w[flag] !== undefined)
-        return;
-    w[flag] = false;
-    window.addEventListener('flutter-first-frame', () => {
-        w[flag] = true;
-    });
+    // Guarded: an init script runs in every frame, also about:blank and sandboxed ones, where some
+    // APIs (storage, for example) throw. It must never break the page.
+    try {
+        const w = window;
+        if (w[flag] !== undefined)
+            return;
+        w[flag] = false;
+        window.addEventListener('flutter-first-frame', () => {
+            w[flag] = true;
+        });
+    }
+    catch {
+        /* leave the flag undefined: the ready wait reports that the listener is missing */
+    }
 }
 const installed = new WeakSet();
 /**

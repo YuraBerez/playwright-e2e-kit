@@ -15,7 +15,18 @@ export interface E2ELayerRulesOptions {
   root?: string
   /** Name prefix of each config object. Default `e2e`. */
   name?: string
+  /**
+   * Also configure the unused-variable rule for files under `root`, so that a leading-underscore
+   * argument (`{ browserName: _browserName }`, `(_page) => …`) is allowed. Name the rule the app
+   * already uses: `'no-unused-vars'` or `'@typescript-eslint/no-unused-vars'` (its plugin must be
+   * loaded by the app's own config). The rule is set to `error` with `argsIgnorePattern: '^_'`.
+   * Default: not set, the app's own setting stays.
+   */
+  unusedVars?: 'no-unused-vars' | '@typescript-eslint/no-unused-vars'
 }
+
+/** Options that the `unusedVars` setting gives to the rule: unused args are fine when they start with `_`. */
+export const UNDERSCORE_ARGS_OPTIONS = { args: 'after-used', argsIgnorePattern: '^_' } as const
 
 const alt = (names: readonly string[]) => names.join('|')
 const callOf = (names: readonly string[]) =>
@@ -88,7 +99,18 @@ export function e2eLayerRules(options: E2ELayerRulesOptions = {}): Linter.Config
     patterns: [{ group: upperLayers, message: 'Page objects do not depend on steps, fixtures or data.' }],
   }
 
+  const unusedVars: Linter.Config[] = options.unusedVars
+    ? [
+        {
+          name: `${name}/underscore-args`,
+          files: [`${root}/**/*.ts`],
+          rules: { [options.unusedVars]: ['error', { ...UNDERSCORE_ARGS_OPTIONS }] },
+        },
+      ]
+    : []
+
   return [
+    ...unusedVars,
     {
       name: `${name}/all-no-fixed-waits`,
       files: [`${root}/**/*.ts`],

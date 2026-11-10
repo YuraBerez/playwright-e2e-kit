@@ -1,7 +1,7 @@
 import { Linter } from 'eslint'
 import tseslint from 'typescript-eslint'
 import { describe, expect, it } from 'vitest'
-import { e2eLayerRules } from '../src/eslint.js'
+import { e2eLayerRules, UNDERSCORE_ARGS_OPTIONS } from '../src/eslint.js'
 
 const cwd = '/project'
 
@@ -87,5 +87,37 @@ describe('e2eLayerRules', () => {
   it('honours a custom root', () => {
     expect(lint('tests/e2e/specs/a.spec.ts', "x.goto('/a')", 'tests/e2e/')).toEqual([expect.stringMatching(/No page.goto/)])
     expect(lint('e2e/specs/a.spec.ts', "x.goto('/a')", 'tests/e2e')).toEqual([])
+  })
+})
+
+describe('e2eLayerRules unusedVars (underscore args)', () => {
+  const code = 'export const f = async ({ a: _a }: { a: string }, b: number) => b\n'
+  const run = (opts: Parameters<typeof e2eLayerRules>[0], rule: string) => {
+    const linter = new Linter({ cwd })
+    const config: Linter.Config[] = [
+      { files: ['**/*.ts'], languageOptions: { parser: tseslint.parser as Linter.Parser } },
+      { files: ['**/*.ts'], plugins: { '@typescript-eslint': tseslint.plugin as never }, rules: { [rule]: 'error' } },
+      ...e2eLayerRules(opts),
+    ]
+    return linter.verify(code, config, { filename: `${cwd}/e2e/fixtures/x.ts` }).map((m) => m.ruleId)
+  }
+  it('is off by default: the app setting stays', () => {
+    expect(e2eLayerRules().some((c) => c.name?.endsWith('underscore-args'))).toBe(false)
+    expect(run({}, '@typescript-eslint/no-unused-vars')).toEqual(['@typescript-eslint/no-unused-vars'])
+  })
+  it('allows a leading-underscore arg but still reports other unused ones', () => {
+    expect(UNDERSCORE_ARGS_OPTIONS.argsIgnorePattern).toBe('^_')
+    expect(run({ unusedVars: '@typescript-eslint/no-unused-vars' }, '@typescript-eslint/no-unused-vars')).toEqual([])
+    const bad = 'export const g = (x: number, _y: number) => 1\n'
+    const linter = new Linter({ cwd })
+    const msgs = linter.verify(
+      bad,
+      [
+        { files: ['**/*.ts'], languageOptions: { parser: tseslint.parser as Linter.Parser } },
+        ...e2eLayerRules({ unusedVars: 'no-unused-vars' }),
+      ],
+      { filename: `${cwd}/e2e/fixtures/x.ts` },
+    )
+    expect(msgs.map((m) => m.ruleId)).toEqual(['no-unused-vars'])
   })
 })
