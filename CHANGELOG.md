@@ -5,10 +5,25 @@ Keep a Changelog, and the project follows Semantic Versioning. A change that bre
 
 ## [Unreleased]
 
-Additive: only apps that import `playwright-e2e-kit/compose` see a change.
+Additive: apps that do not use the new helpers see no change.
 
 ### Added
 
+- `workerResourceFixture(factory)`: `resourceFixture` with `scope: 'worker'`, destroyed at worker
+  teardown. `sessionPerWorker({ signIn, saveAfterEachTest, indexedDB })`: signs in once per worker
+  (`workerSession` worker fixture) and gives the state to each test's `storageState`; with
+  `saveAfterEachTest`, each test saves the latest state back for the next test of the worker.
+  README "Worker-scoped data and sessions" explains why one shared `storageState` breaks apps
+  that rotate refresh tokens (#24).
+- `flutterType(locator, text, { timeout, attempts })` in `playwright-e2e-kit/flutter` and
+  `FlutterScreen.typeText()`: focus, two animation frames, fill, then confirm the value through
+  the semantics node (fill again if Flutter dropped it). Works on the text field or on the
+  `Semantics(identifier:)` node that wraps it. README Flutter "8. Text fields" (#25).
+- `networkFault(page, { url, status, times, method, body, headers, cors, reason })`: answers the
+  next N matching calls with a status, adds CORS headers and answers the preflight (default on),
+  and tells the error guard that the faulted responses are expected. `ErrorGuard.expect()`
+  (expected errors at run time, optional `times`), `errorGuardsOf(context)` and the public
+  `ErrorGuard.minStatus` support it. README "Network faults" (#26).
 - Reusable workflow `.github/workflows/compose-e2e.yml` (`workflow_call`) for Compose
   Multiplatform web e2e tests: JDK 21 and Gradle cache, `wasmJsBrowserDistribution` with a
   separate Gradle root (`gradle-dir`) and web module (`app-dir`), a static server with a base path

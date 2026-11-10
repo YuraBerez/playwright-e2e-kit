@@ -39,6 +39,17 @@ test.describe('flutter', () => {
     await screen.verifyGreeting('Hello, Grace!')
   })
 
+  test('types into a text field at once after open, and again over the old text', async ({ page }) => {
+    const screen = new FlutterGreeterScreen(page)
+    await screen.open()
+    await screen.enterName('Ada')
+    await screen.verifyNameValue('Ada')
+    await screen.enterNameByTestId('Grace Hopper')
+    await screen.verifyNameValue('Grace Hopper')
+    await screen.greet()
+    await screen.verifyGreeting('Hello, Grace Hopper!')
+  })
+
   test('scrolls a virtualised list until an item is on screen', async ({ page }) => {
     const screen = new FlutterGreeterScreen(page)
     await screen.open()
