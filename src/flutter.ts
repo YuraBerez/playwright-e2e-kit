@@ -10,5 +10,6 @@ export {
   installFlutterFirstFrameListener,
   type FlutterReadyOptions,
 } from './flutter-ready.js'
-export { FlutterScreen, scrollUntilVisible, type ScrollUntilVisibleOptions } from './flutter-screen.js'
+export { FlutterScreen } from './flutter-screen.js'
+export { scrollUntilVisible, type ScrollUntilVisibleOptions } from './canvas-scroll.js'
 export { flutterErrorAllowList } from './flutter-allow-list.js'
