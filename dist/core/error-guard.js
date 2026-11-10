@@ -30,9 +30,13 @@ export function formatErrors(errors) {
     return `Error guard: ${errors.length} unexpected browser/server error(s) during the test:\n${lines.join('\n')}`;
 }
 /** Init script: a CSP violation becomes a `console.error`, so the guard reports it. */
-export const CSP_VIOLATION_SCRIPT = `document.addEventListener('securitypolicyviolation', (e) => {
-        console.error('CSP violation: ' + e.violatedDirective + ' blocked ' + (e.blockedURI || '(inline)'))
-      })`;
+export const CSP_VIOLATION_SCRIPT = `try {
+        document.addEventListener('securitypolicyviolation', (e) => {
+          console.error('CSP violation: ' + e.violatedDirective + ' blocked ' + (e.blockedURI || '(inline)'))
+        })
+      } catch (_) {
+        /* about:blank and sandboxed frames can throw on some APIs: never break the page */
+      }`;
 const watchers = new WeakMap();
 /** The error guards that watch `context` (`errorGuardFixture()` or `errorGuard.watch(context)`). */
 export function errorGuardsOf(context) {
