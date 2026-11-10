@@ -11,5 +11,6 @@ export {
   type FlutterReadyOptions,
 } from './flutter/ready.js'
 export { FlutterScreen } from './flutter/screen.js'
+export { flutterType, type FlutterTypeOptions } from './flutter/input.js'
 export { scrollUntilVisible, type ScrollUntilVisibleOptions } from './canvas/scroll.js'
 export { flutterErrorAllowList } from './flutter/allow-list.js'

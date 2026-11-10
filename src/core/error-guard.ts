@@ -8,11 +8,22 @@ export type ErrorKind = 'pageerror' | 'console' | 'response5xx' | 'requestfailed
  * each entry hides a real defect class, so give it a reason and a tracking issue.
  */
 export interface AllowedError {
-  kind: ErrorKind
+  /** One kind, or a list: one entry then covers each listed kind (for example a third-party origin). */
+  kind: ErrorKind | readonly ErrorKind[]
   /** Substring (string) or RegExp, tested against the message and the failing URL. */
   message: string | RegExp
   /** Why this is expected, and the issue that tracks its removal. */
   reason: string
+}
+
+/**
+ * An error that the test causes on purpose (for example a fault answered by `networkFault`). Unlike
+ * an `AllowedError`, it is added while the test runs and, with `times`, matches only that many
+ * errors.
+ */
+export interface ExpectedError extends AllowedError {
+  /** How many errors the entry matches. Default: no limit (until the test ends). */
+  times?: number
 }
 
 export interface CollectedError {
@@ -51,7 +62,7 @@ export function isClientErrorEcho(consoleText: string): boolean {
 export function isAllowed(error: CollectedError, allow: readonly AllowedError[]): boolean {
   return allow.some(
     (rule) =>
-      rule.kind === error.kind &&
+      (Array.isArray(rule.kind) ? rule.kind.includes(error.kind) : rule.kind === error.kind) &&
       (typeof rule.message === 'string'
         ? error.text.includes(rule.message) || error.url.includes(rule.message)
         : matches(rule.message, error.text) || matches(rule.message, error.url)),
@@ -78,6 +89,13 @@ export const CSP_VIOLATION_SCRIPT = `try {
         /* about:blank and sandboxed frames can throw on some APIs: never break the page */
       }`
 
+const watchers = new WeakMap<BrowserContext, ErrorGuard[]>()
+
+/** The error guards that watch `context` (`errorGuardFixture()` or `errorGuard.watch(context)`). */
+export function errorGuardsOf(context: BrowserContext): readonly ErrorGuard[] {
+  return watchers.get(context) ?? []
+}
+
 /**
  * Collects silent failures that no `expect` looks for: uncaught page errors, `console.error`,
  * responses with status >= `minStatus`, CSP violations, and failed requests (network level),
@@ -86,7 +104,9 @@ export const CSP_VIOLATION_SCRIPT = `try {
 export class ErrorGuard {
   private readonly errors: CollectedError[] = []
   private readonly allow: readonly AllowedError[]
-  private readonly minStatus: number
+  private readonly expected: { entry: AllowedError; left: number }[] = []
+  /** Responses with a status from this value on are reported (`response5xx`). */
+  readonly minStatus: number
 
   constructor(options: ErrorGuardOptions = {}) {
     this.allow = options.allow ?? []
@@ -100,6 +120,8 @@ export class ErrorGuard {
 
   async watch(context: BrowserContext): Promise<void> {
     const browserName = context.browser()?.browserType().name()
+    const guards = watchers.get(context) ?? []
+    if (!guards.includes(this)) watchers.set(context, [...guards, this])
     // Init scripts are exempt from the page's own CSP.
     await context.addInitScript({ content: CSP_VIOLATION_SCRIPT })
     context.on('weberror', (webError) => {
@@ -133,8 +155,24 @@ export class ErrorGuard {
     })
   }
 
+  /**
+   * Tells the guard that the test causes this error on purpose. It is matched as an allow-list
+   * entry (same kind, message or URL), but only while the test runs and, with `times`, only that
+   * many times. `networkFault` calls it for each fault that it answers.
+   */
+  expect(error: ExpectedError): void {
+    const { times, ...entry } = error
+    this.expected.push({ entry, left: times ?? Number.POSITIVE_INFINITY })
+  }
+
   private add(error: CollectedError): void {
-    if (!isAllowed(error, this.allow)) this.errors.push(error)
+    if (isAllowed(error, this.allow)) return
+    const expected = this.expected.find((e) => e.left > 0 && isAllowed(error, [e.entry]))
+    if (expected) {
+      expected.left--
+      return
+    }
+    this.errors.push(error)
   }
 
   /** Throws a readable list (kind, message, URL) if anything was collected. */

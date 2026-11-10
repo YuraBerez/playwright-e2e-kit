@@ -13,23 +13,26 @@ import { flutterConfig } from 'playwright-e2e-kit/flutter'
 
 type App = 'react' | 'vue' | 'angular' | 'flutter' | 'compose'
 
+// `self-tests/*.test.ts` run on every app. `self-tests/react/` holds the framework-agnostic core
+// tests (sessions, network faults) that need a browser and an origin but no particular framework:
+// they run once, on the React app.
 const APPS: Record<App, { port: number; out: string; testMatch: RegExp }> = {
-  react: { port: 4301, out: 'test/fixtures-apps/react/dist', testMatch: /(specs\/web\.spec|self-tests\/.*\.test)\.ts$/ },
-  vue: { port: 4302, out: 'test/fixtures-apps/vue/dist', testMatch: /(specs\/web\.spec|self-tests\/.*\.test)\.ts$/ },
+  react: { port: 4301, out: 'test/fixtures-apps/react/dist', testMatch: /(specs\/web\.spec|self-tests\/(react\/)?[^/]+\.test)\.ts$/ },
+  vue: { port: 4302, out: 'test/fixtures-apps/vue/dist', testMatch: /(specs\/web\.spec|self-tests\/[^/]+\.test)\.ts$/ },
   angular: {
     port: 4304,
     out: 'test/fixtures-apps/angular/dist/angular/browser',
-    testMatch: /(specs\/(web|angular)\.spec|self-tests\/.*\.test)\.ts$/,
+    testMatch: /(specs\/(web|angular)\.spec|self-tests\/[^/]+\.test)\.ts$/,
   },
   flutter: {
     port: 4303,
     out: 'test/fixtures-apps/flutter/build/web',
-    testMatch: /(specs\/flutter\.spec|self-tests\/.*\.test)\.ts$/,
+    testMatch: /(specs\/flutter\.spec|self-tests\/[^/]+\.test)\.ts$/,
   },
   compose: {
     port: 4305,
     out: 'test/fixtures-apps/compose/build/dist/wasmJs/productionExecutable',
-    testMatch: /(specs\/compose\.spec|self-tests\/.*\.test)\.ts$/,
+    testMatch: /(specs\/compose\.spec|self-tests\/[^/]+\.test)\.ts$/,
   },
 }
 

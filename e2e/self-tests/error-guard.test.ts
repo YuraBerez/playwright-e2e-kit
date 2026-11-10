@@ -31,3 +31,28 @@ test('the error guard reports a page error and a console error', async ({ browse
     await context.close()
   }
 })
+
+test('one allow-list entry with a kind list covers a console and a page error', async ({ browser, baseURL }) => {
+  const guard = new ErrorGuard({
+    allow: [{ kind: ['console', 'pageerror'], message: 'self-test: listed', reason: 'self-test of a kind list' }],
+  })
+  const context = await browser.newContext({ baseURL })
+  try {
+    await guard.watch(context)
+    const page = await context.newPage()
+    await page.goto('/')
+    await page.evaluate(() => {
+      console.error('self-test: listed console error')
+      console.error('self-test: unlisted console error')
+      setTimeout(() => {
+        throw new Error('self-test: listed page error')
+      })
+    })
+    await expect.poll(() => guard.collected.map((e) => e.text).join('\n')).toContain('unlisted console error')
+    // Give the thrown error time to reach the guard; it is allowed, so it must not appear.
+    await page.waitForTimeout(300)
+    expect(guard.collected.map((e) => e.text).join('\n')).not.toContain('self-test: listed')
+  } finally {
+    await context.close()
+  }
+})

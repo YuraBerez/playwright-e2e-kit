@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest'
 import {
   CSP_VIOLATION_SCRIPT,
   ErrorGuard,
+  errorGuardsOf,
   formatErrors,
   isAllowed,
   isBenignAbort,
@@ -91,6 +92,14 @@ describe('isAllowed', () => {
     expect(isAllowed(err, [{ kind: 'console', message: 'cdn.example.com', reason: 'r' }])).toBe(true)
     expect(isAllowed(err, [{ kind: 'pageerror', message: 'ResizeObserver', reason: 'r' }])).toBe(false)
     expect(isAllowed(err, [{ kind: 'console', message: 'other', reason: 'r' }])).toBe(false)
+  })
+  it('matches any kind of a kind list, and only those', () => {
+    const rule: AllowedError = { kind: ['console', 'requestfailed'], message: 'cdn.example.com', reason: 'r' }
+    expect(isAllowed(err, [rule])).toBe(true)
+    expect(isAllowed({ ...err, kind: 'requestfailed' }, [rule])).toBe(true)
+    expect(isAllowed({ ...err, kind: 'pageerror' }, [rule])).toBe(false)
+    expect(isAllowed({ ...err, kind: 'response5xx' }, [rule])).toBe(false)
+    expect(isAllowed(err, [{ ...rule, kind: [] }])).toBe(false)
   })
   it('matches RegExp against text or URL', () => {
     expect(isAllowed(err, [{ kind: 'console', message: /loop$/, reason: 'r' }])).toBe(true)
@@ -181,5 +190,43 @@ describe('ErrorGuard', () => {
     expect(() => guard.assertClean()).not.toThrow()
     ctx.emit('console', consoleMsg('error', 'new defect'))
     expect(() => guard.assertClean()).toThrow(/1 unexpected browser\/server error\(s\)[\s\S]*\[console\] new defect/)
+  })
+})
+
+describe('ErrorGuard.expect', () => {
+  it('skips an expected error only as many times as given', async () => {
+    const { ctx, guard } = await watched()
+    guard.expect({ kind: 'response5xx', message: '/api/a', reason: 'fault on purpose', times: 1 })
+    ctx.emit('response', response('https://app/api/a', 503))
+    expect(guard.collected).toEqual([])
+    ctx.emit('response', response('https://app/api/a', 503))
+    expect(guard.collected.map((e) => e.text)).toEqual(['GET https://app/api/a -> 503'])
+  })
+
+  it('without times matches until the test ends, and only its own kind', async () => {
+    const { ctx, guard } = await watched()
+    guard.expect({ kind: 'console', message: /api\/b/, reason: 'r' })
+    ctx.emit('console', consoleMsg('error', 'Failed to load resource: 503', 'https://app/api/b'))
+    ctx.emit('console', consoleMsg('error', 'Failed to load resource: 503', 'https://app/api/b'))
+    ctx.emit('response', response('https://app/api/b', 503))
+    expect(guard.collected.map((e) => e.kind)).toEqual(['response5xx'])
+  })
+
+  it('the static allow-list wins and does not use up an expected entry', async () => {
+    const { ctx, guard } = await watched('chromium', [{ kind: 'response5xx', message: '/api/c', reason: 'r' }])
+    guard.expect({ kind: 'response5xx', message: '/api/', reason: 'r', times: 1 })
+    ctx.emit('response', response('https://app/api/c', 500))
+    ctx.emit('response', response('https://app/api/d', 500))
+    expect(guard.collected).toEqual([])
+  })
+
+  it('is registered for each watched context, once per guard', async () => {
+    const { ctx, guard } = await watched()
+    await guard.watch(ctx as unknown as Context)
+    const other = new ErrorGuard()
+    await other.watch(ctx as unknown as Context)
+    expect(errorGuardsOf(ctx as unknown as Context)).toEqual([guard, other])
+    expect(errorGuardsOf(new FakeContext('chromium') as unknown as Context)).toEqual([])
+    expect(guard.minStatus).toBe(500)
   })
 })

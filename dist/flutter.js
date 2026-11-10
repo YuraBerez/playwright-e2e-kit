@@ -4,6 +4,7 @@ export { FLUTTER_TEST_ID_ATTRIBUTE, flutterConfig } from './flutter/config.js';
 export { flutterFixture } from './flutter/fixture.js';
 export { FLUTTER_FIRST_FRAME_FLAG, enableFlutterSemantics, flutterReady, flutterReadyWith, installFlutterFirstFrameListener, } from './flutter/ready.js';
 export { FlutterScreen } from './flutter/screen.js';
+export { flutterType } from './flutter/input.js';
 export { scrollUntilVisible } from './canvas/scroll.js';
 export { flutterErrorAllowList } from './flutter/allow-list.js';
 //# sourceMappingURL=flutter.js.map

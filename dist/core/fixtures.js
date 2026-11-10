@@ -16,6 +16,113 @@ export function resourceFixture(factory) {
         }
     };
 }
+/**
+ * A worker fixture (`scope: 'worker'`) that creates one resource per worker, shares it with every
+ * test of that worker, and destroys it at worker teardown (also when a test failed). Use it for
+ * data that is expensive to create and that no test changes, for example a read-only account.
+ * Declare it in the second type argument of `test.extend<TestFixtures, WorkerFixtures>()`.
+ */
+export function workerResourceFixture(factory) {
+    return [
+        async ({ browserName: _browserName }, use) => {
+            const resource = await factory.create();
+            try {
+                await use(resource);
+            }
+            finally {
+                await factory.destroy(resource);
+            }
+        },
+        { scope: 'worker' },
+    ];
+}
+const CONTEXT_OPTION_KEYS = [
+    'baseURL',
+    'acceptDownloads',
+    'bypassCSP',
+    'colorScheme',
+    'contrast',
+    'deviceScaleFactor',
+    'extraHTTPHeaders',
+    'forcedColors',
+    'geolocation',
+    'hasTouch',
+    'httpCredentials',
+    'ignoreHTTPSErrors',
+    'isMobile',
+    'javaScriptEnabled',
+    'locale',
+    'offline',
+    'permissions',
+    'proxy',
+    'reducedMotion',
+    'screen',
+    'serviceWorkers',
+    'timezoneId',
+    'userAgent',
+    'viewport',
+];
+/** The project's context options (`use`) that the sign-in context must share with the tests' contexts. */
+function contextOptions(use) {
+    const picked = {};
+    for (const key of CONTEXT_OPTION_KEYS)
+        if (use[key] !== undefined)
+            picked[key] = use[key];
+    return picked;
+}
+/**
+ * Signs in once per worker and starts each test of that worker signed in: `workerSession` (a
+ * worker fixture) runs `signIn` on a fresh page and keeps the state; `storageState` gives it to
+ * each test's context. Spread into
+ * `test.extend<SessionPerWorkerFixtures, SessionPerWorkerWorkerFixtures>({ ...sessionPerWorker({ signIn }) })`.
+ *
+ * One state per worker, not one for the whole run: workers that share one saved session share one
+ * refresh token, and an app that rotates refresh tokens revokes the session when a second worker
+ * uses the token that the first one already used.
+ */
+export function sessionPerWorker(options) {
+    const save = (context) => options.indexedDB ? context.storageState({ indexedDB: true }) : context.storageState();
+    return {
+        workerSession: [
+            async ({ browser }, use, workerInfo) => {
+                const context = await browser.newContext({ ...contextOptions(workerInfo.project.use), storageState: undefined });
+                let state;
+                try {
+                    const page = await context.newPage();
+                    try {
+                        await options.signIn({ page, workerInfo });
+                    }
+                    catch (cause) {
+                        throw new Error(`sessionPerWorker: signIn failed in worker ${workerInfo.parallelIndex}.`, { cause });
+                    }
+                    state = await save(context);
+                }
+                finally {
+                    await context.close();
+                }
+                await use({ state, parallelIndex: workerInfo.parallelIndex });
+            },
+            { scope: 'worker' },
+        ],
+        storageState: async ({ workerSession }, use) => {
+            await use(workerSession.state);
+        },
+        workerSessionSave: [
+            options.saveAfterEachTest
+                ? async ({ context, storageState, workerSession }, use) => {
+                    await use();
+                    // Only a test that started from the worker's state saves it back (not one with its own `test.use({ storageState })`).
+                    if (storageState === workerSession.state)
+                        workerSession.state = await save(context);
+                }
+                : // Off: depends on nothing, so no test context is opened for it.
+                    (async ({ browserName: _browserName }, use) => {
+                        await use();
+                    }),
+            { auto: true },
+        ],
+    };
+}
 /** A fixture that gives the test a `CleanupRegistry` and runs it at teardown. */
 export function cleanupFixture(options = {}) {
     return async ({ browserName: _browserName }, use) => {

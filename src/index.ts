@@ -3,6 +3,7 @@ export { BaseSteps, boxSteps, humanize, stepTitle } from './core/steps.js'
 export {
   CSP_VIOLATION_SCRIPT,
   ErrorGuard,
+  errorGuardsOf,
   formatErrors,
   isAllowed,
   isBenignAbort,
@@ -11,9 +12,24 @@ export {
   type CollectedError,
   type ErrorGuardOptions,
   type ErrorKind,
+  type ExpectedError,
 } from './core/error-guard.js'
 export { CleanupRegistry, formatCleanupFailures, type CleanupFailure, type ResourceFactory } from './core/data.js'
-export { appReadyFixture, cleanupFixture, errorGuardFixture, resourceFixture, type CleanupFixtureOptions } from './core/fixtures.js'
+export {
+  appReadyFixture,
+  cleanupFixture,
+  errorGuardFixture,
+  resourceFixture,
+  sessionPerWorker,
+  workerResourceFixture,
+  type CleanupFixtureOptions,
+  type SessionPerWorkerFixtures,
+  type SessionPerWorkerOptions,
+  type SessionPerWorkerWorkerFixtures,
+  type SessionState,
+  type WorkerSession,
+} from './core/fixtures.js'
+export { networkFault, type NetworkFault, type NetworkFaultOptions, type NetworkFaultUrl } from './core/network-fault.js'
 export { DEFAULT_LOCALE, DEFAULT_TIMEZONE, deterministicUse, type Determinism } from './core/determinism.js'
 export {
   angularReady,
