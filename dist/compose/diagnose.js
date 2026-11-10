@@ -62,7 +62,7 @@ export function composeHints(facts) {
     const hints = [];
     if (!facts.a11yRoot) {
         hints.push(facts.canvas
-            ? 'There is a canvas but no #cmp_a11y_root: ComposeViewport sets isA11YEnabled = false. Remove it (the tree is on by default).'
+            ? 'There is a canvas but no #cmp_a11y_root: the app is still loading (give composeReady a longer timeout), or ComposeViewport sets isA11YEnabled = false (remove it: the tree is on by default).'
             : 'There is no canvas and no #cmp_a11y_root: the page is not a Compose Multiplatform wasmJs app, or the wasm module did not start (see the browser console and the network log).');
         return hints;
     }

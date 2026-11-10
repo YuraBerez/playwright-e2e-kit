@@ -10,8 +10,10 @@ Additive: only apps that import `playwright-e2e-kit/compose` see a change.
 ### Added
 
 - Reusable workflow `.github/workflows/compose-e2e.yml` (`workflow_call`) for Compose
-  Multiplatform web e2e tests: JDK 21 and Gradle cache, `wasmJsBrowserDistribution`, a static
-  server with a base path, Playwright browsers cache, report upload without traces by default.
+  Multiplatform web e2e tests: JDK 21 and Gradle cache, `wasmJsBrowserDistribution` with a
+  separate Gradle root (`gradle-dir`) and web module (`app-dir`), a static server with a base path
+  (index.html fallback for navigations only; fails clearly when the port is taken), Playwright
+  browsers cache, report upload without traces by default.
   GitHub-hosted runners and self-hosted macOS runners. The kit's `e2e (compose)` CI job uses it.
   README "Compose MP web in CI" (#21).
 - `diagnoseCompose(page)` in `playwright-e2e-kit/compose`: a11y root present or empty, node count,

@@ -28,7 +28,8 @@ export const composeReady = async (page, options = {}) => {
         const diagnosis = await diagnoseCompose(page).catch(() => undefined);
         let detail;
         if (diagnosis) {
-            await attachComposeDiagnosis(diagnosis);
+            // The attachment is a help only: its failure must never replace the timeout error.
+            await attachComposeDiagnosis(diagnosis).catch(() => undefined);
             detail = `Diagnosis (attached as compose-diagnosis.json): ${formatComposeDiagnosis(diagnosis)}`;
         }
         else {

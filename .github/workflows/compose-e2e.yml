@@ -8,7 +8,8 @@
 #     e2e:
 #       uses: YuraBerez/playwright-e2e-kit/.github/workflows/compose-e2e.yml@v0.3.0
 #       with:
-#         app-dir: web
+#         app-dir: composeApp          # the web module; gradlew is in gradle-dir (default: the root)
+#         gradle-task: :composeApp:wasmJsBrowserDistribution
 #
 # The tests get the app URL in E2E_BASE_URL (for example `use: { baseURL: process.env.E2E_BASE_URL }`).
 # Runs on GitHub-hosted runners (Linux, macOS) and on self-hosted macOS runners (`runs-on` input).
@@ -17,12 +18,16 @@ name: Compose MP web e2e
 on:
   workflow_call:
     inputs:
+      gradle-dir:
+        description: Gradle root (the directory with gradlew and settings.gradle.kts), relative to the repository root.
+        type: string
+        default: .
       app-dir:
-        description: Directory of the Gradle project (with gradlew), relative to the repository root.
+        description: Directory of the web module (for example composeApp), relative to the repository root. The build output is in it.
         type: string
         required: true
       gradle-task:
-        description: Gradle task that builds the web distribution.
+        description: Gradle task that builds the web distribution, run in gradle-dir (for example :composeApp:wasmJsBrowserDistribution).
         type: string
         default: wasmJsBrowserDistribution
       dist-dir:
@@ -112,8 +117,9 @@ jobs:
           java-version: ${{ inputs.java-version }}
           cache: gradle
           cache-dependency-path: |
-            ${{ inputs.app-dir }}/*.gradle*
-            ${{ inputs.app-dir }}/gradle/wrapper/gradle-wrapper.properties
+            ${{ inputs.gradle-dir }}/**/*.gradle*
+            ${{ inputs.gradle-dir }}/**/gradle-wrapper.properties
+            ${{ inputs.gradle-dir }}/gradle/libs.versions.toml
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: ${{ inputs.node-version }}
@@ -121,7 +127,7 @@ jobs:
           cache-dependency-path: ${{ inputs.e2e-dir }}/package-lock.json
 
       - name: Build the web distribution
-        working-directory: ${{ inputs.app-dir }}
+        working-directory: ${{ inputs.gradle-dir }}
         run: ./gradlew "$GRADLE_TASK" --console=plain
         env:
           GRADLE_TASK: ${{ inputs.gradle-task }}
@@ -160,36 +166,64 @@ jobs:
           PW_CONFIG: ${{ inputs.playwright-config }}
           PW_PROJECT: ${{ inputs.playwright-project }}
         run: |
-          # Static server without dependencies: the base path, the wasm MIME type (needed for
-          # streaming compilation) and the single-page-app fallback to index.html.
+          # Static server without dependencies (test/compose-e2e-server.test.ts runs this exact
+          # script): the base path, the wasm MIME type (needed for streaming compilation), and
+          # the single-page-app fallback to index.html for navigations only. A missing asset
+          # (.wasm, .js, .css) is a 404, so a wrong dist-dir shows as a 404, not a MIME error.
           cat > "$RUNNER_TEMP/serve-compose.mjs" <<'EOF'
-          import { createReadStream, existsSync, statSync } from 'node:fs'
+          import { createReadStream, existsSync, statSync, writeFileSync } from 'node:fs'
           import { createServer } from 'node:http'
-          import { extname, join, normalize, resolve } from 'node:path'
-          const [dir, port, base] = process.argv.slice(2)
+          import { extname, isAbsolute, join, relative, resolve } from 'node:path'
+          const [dir, port, base, readyFile] = process.argv.slice(2)
           const root = resolve(dir)
           const types = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.mjs': 'text/javascript; charset=utf-8',
             '.css': 'text/css; charset=utf-8', '.json': 'application/json; charset=utf-8', '.wasm': 'application/wasm', '.svg': 'image/svg+xml',
             '.png': 'image/png', '.ico': 'image/x-icon', '.ttf': 'font/ttf', '.otf': 'font/otf', '.woff2': 'font/woff2' }
-          createServer((req, res) => {
-            const path = decodeURIComponent(new URL(req.url ?? '/', 'http://localhost').pathname)
+          const isFile = (f) => existsSync(f) && statSync(f).isFile()
+          const server = createServer((req, res) => {
+            let path
+            try {
+              path = decodeURIComponent(new URL(req.url ?? '/', 'http://localhost').pathname)
+            } catch {
+              return void res.writeHead(400).end()
+            }
             if (!path.startsWith(base) && path !== base.replace(/\/$/, '')) return void res.writeHead(404).end()
-            let file = normalize(join(root, path.slice(base.length)))
-            if (!file.startsWith(root)) return void res.writeHead(403).end()
-            if (!existsSync(file) || statSync(file).isDirectory()) {
-              const index = join(file, 'index.html')
-              file = existsSync(index) ? index : join(root, 'index.html')
+            let file = resolve(root, '.' + path.slice(base.length - 1))
+            const rel = relative(root, file)
+            if (rel.startsWith('..') || isAbsolute(rel)) return void res.writeHead(403).end()
+            if (!isFile(file)) {
+              const navigation = extname(file) === '' || (req.headers.accept ?? '').includes('text/html')
+              if (isFile(join(file, 'index.html'))) file = join(file, 'index.html')
+              else if (navigation) file = join(root, 'index.html')
+              else return void res.writeHead(404).end()
             }
             res.writeHead(200, { 'Content-Type': types[extname(file)] ?? 'application/octet-stream', 'Cache-Control': 'no-store' })
             createReadStream(file).pipe(res)
-          }).listen(Number(port), () => console.log(`serving ${root} at http://localhost:${port}${base}`))
+          })
+          server.on('error', (error) => {
+            const why = error.code === 'EADDRINUSE' ? `port ${port} is already in use (another server, or one left from an earlier run); set the port input` : error.message
+            console.error(`::error::The static server did not start: ${why}`)
+            process.exit(1)
+          })
+          server.listen(Number(port), () => {
+            console.log(`serving ${root} at http://localhost:${port}${base}`)
+            if (readyFile) writeFileSync(readyFile, String(process.pid))
+          })
           EOF
           case "$BASE_PATH" in /*/|/) ;; *) echo "::error::base-path must start and end with /"; exit 1 ;; esac
-          test -f "$DIST/index.html" || { echo "::error::No index.html in $DIST: check dist-dir"; exit 1; }
-          node "$RUNNER_TEMP/serve-compose.mjs" "$DIST" "$PORT" "$BASE_PATH" &
+          test -f "$DIST/index.html" || { echo "::error::No index.html in $DIST: check app-dir and dist-dir"; exit 1; }
+          ready="$RUNNER_TEMP/serve-compose.ready"
+          rm -f "$ready"
+          node "$RUNNER_TEMP/serve-compose.mjs" "$DIST" "$PORT" "$BASE_PATH" "$ready" &
           server=$!
           trap 'kill $server 2>/dev/null' EXIT
-          for _ in $(seq 1 60); do curl -fsS -o /dev/null "$E2E_BASE_URL" && break; sleep 0.5; done
+          # Wait until OUR server listens (it writes the ready file), not just anything on the port.
+          for _ in $(seq 1 60); do
+            [ -f "$ready" ] && break
+            kill -0 "$server" 2>/dev/null || { wait "$server" || true; echo "::error::The static server exited before it listened on port $PORT."; exit 1; }
+            sleep 0.5
+          done
+          [ -f "$ready" ] || { echo "::error::The static server did not listen on port $PORT within 30 s."; exit 1; }
           curl -fsS -o /dev/null "$E2E_BASE_URL"
           args=()
           if [ -n "$PW_CONFIG" ]; then args+=(-c "$PW_CONFIG"); fi

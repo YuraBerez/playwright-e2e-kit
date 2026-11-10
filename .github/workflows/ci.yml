@@ -87,6 +87,7 @@ jobs:
     # the Node and JDK versions repeat NODE_VERSION and the template's JDK 21 default.
     uses: ./.github/workflows/compose-e2e.yml
     with:
+      gradle-dir: test/fixtures-apps/compose # the fixture is its own Gradle root
       app-dir: test/fixtures-apps/compose
       port: 4305
       playwright-config: e2e/playwright.config.ts

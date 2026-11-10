@@ -37,7 +37,8 @@ export const composeReady = async (page: Page, options: ComposeReadyOptions = {}
     const diagnosis = await diagnoseCompose(page).catch(() => undefined)
     let detail: string
     if (diagnosis) {
-      await attachComposeDiagnosis(diagnosis)
+      // The attachment is a help only: its failure must never replace the timeout error.
+      await attachComposeDiagnosis(diagnosis).catch(() => undefined)
       detail = `Diagnosis (attached as compose-diagnosis.json): ${formatComposeDiagnosis(diagnosis)}`
     } else {
       // The page could not run the diagnosis (closed, or navigating): the plain check only.
