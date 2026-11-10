@@ -17,19 +17,22 @@ describe('kit boundaries', () => {
     expect(offenders).toEqual([])
   })
 
-  it('the main entry never reaches the opt-in flutter entry', () => {
-    const seen = new Set<string>()
-    const queue = ['index.ts']
-    while (queue.length > 0) {
-      const file = queue.pop() as string
-      if (seen.has(file)) continue
-      seen.add(file)
-      const text = readFileSync(join(SRC, file), 'utf8')
-      for (const [, spec] of text.matchAll(/(?:from|import\()\s*'(\.\/[^']+)'/g)) {
-        queue.push((spec as string).slice(2).replace(/\.js$/, '.ts'))
-      }
+  it('entry points other than ./flutter never reach the Flutter modules', () => {
+    const reached = (entry: string, seen = new Set<string>()): Set<string> => {
+      if (seen.has(entry)) return seen
+      seen.add(entry)
+      const text = readFileSync(join(SRC, entry), 'utf8')
+      for (const [, spec] of text.matchAll(/from '\.\/([^']+)\.js'/g)) reached(`${spec}.ts`, seen)
+      return seen
     }
-    expect([...seen].filter((f) => f.startsWith('flutter'))).toEqual([])
-    expect(seen.has('error-guard.ts')).toBe(true)
+    const pkg = JSON.parse(readFileSync(join(SRC, '..', 'package.json'), 'utf8')) as { exports: Record<string, unknown> }
+    const entries = Object.keys(pkg.exports)
+      .filter((key) => key !== './flutter' && key !== './package.json')
+      .map((key) => (key === '.' ? 'index.ts' : `${key.slice(2)}.ts`))
+    expect(entries).toContain('index.ts')
+    expect(reached('flutter.ts')).toContain('flutter-ready.ts')
+    for (const entry of entries) {
+      expect([...reached(entry)].filter((file) => file.startsWith('flutter')), entry).toEqual([])
+    }
   })
 })
