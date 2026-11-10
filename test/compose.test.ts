@@ -23,6 +23,7 @@ import {
 } from '../src/compose.js'
 import { composeHints } from '../src/compose/diagnose.js'
 import { scrollUntilVisible as flutterScrollUntilVisible } from '../src/flutter.js'
+import { inputTarget } from './compose-fakes.js'
 import { resolveOption } from './option-helper.js'
 
 const asPage = (p: unknown) => p as Page
@@ -190,28 +191,6 @@ describe('diagnoseCompose', () => {
   })
 })
 
-/** A fake locator on a fake page that records the input calls in order. */
-function inputTarget(opts: { focused?: boolean } = {}) {
-  const calls: string[] = []
-  const page = {
-    keyboard: {
-      press: vi.fn(async (key: string) => void calls.push(`press ${key}`)),
-      type: vi.fn(async (text: string) => void calls.push(`type ${text}`)),
-    },
-    waitForFunction: vi.fn(async (fn: (cls: string) => boolean, cls: string, options: { timeout?: number }) => {
-      calls.push(`focus ${cls} ${options.timeout}`)
-      if (opts.focused === false) throw new Error('Timeout')
-      return fn
-    }),
-  }
-  const locator = {
-    page: () => page,
-    waitFor: vi.fn(async (o: { state: string; timeout?: number }) => void calls.push(`wait ${o.state} ${o.timeout}`)),
-    click: vi.fn(async (o: { force?: boolean; timeout?: number }) => void calls.push(`click force=${o.force} ${o.timeout}`)),
-  }
-  return { calls, page, locator: locator as unknown as Locator }
-}
-
 describe('composeTap', () => {
   it('waits until the node is visible, then clicks through the canvas with force', async () => {
     const t = inputTarget()
@@ -258,8 +237,11 @@ describe('composeType', () => {
       'wait visible undefined',
       'click force=true undefined',
       `focus ${COMPOSE_BACKING_FIELD_CLASS} undefined`,
+      'field',
       'press ControlOrMeta+A',
       'press Backspace',
+      'wait attached',
+      'read',
       'type a@b.c',
     ])
   })
@@ -271,6 +253,7 @@ describe('composeType', () => {
       'wait visible undefined',
       'click force=true undefined',
       `focus ${COMPOSE_BACKING_FIELD_CLASS} undefined`,
+      'field',
       'type !',
     ])
   })

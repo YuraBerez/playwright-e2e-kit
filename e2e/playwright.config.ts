@@ -62,18 +62,34 @@ const webServer: PlaywrightTestConfig['webServer'] = (external ? [] : apps).map(
 const flutterUse = flutterConfig().use
 const composeUse = composeConfig().use
 
+// Compose also runs in WebKit: its input and scroll helpers send real pointer, wheel and keyboard
+// events to the canvas, and each engine delivers them its own way. Firefox (`compose-firefox`) is
+// opt-in with E2E_COMPOSE_FIREFOX=1: in CI the Compose app crashes at startup in headless Firefox
+// (no WebGL for Skiko, also with forced software WebGL prefs), so Firefox is checked locally only.
+// The other apps run in Chromium only.
+const BROWSERS: Record<App, string[]> = {
+  react: ['Desktop Chrome'],
+  vue: ['Desktop Chrome'],
+  angular: ['Desktop Chrome'],
+  flutter: ['Desktop Chrome'],
+  compose: ['Desktop Chrome', ...(process.env.E2E_COMPOSE_FIREFOX ? ['Desktop Firefox'] : []), 'Desktop Safari'],
+}
+const SUFFIX: Record<string, string> = { 'Desktop Chrome': '', 'Desktop Firefox': '-firefox', 'Desktop Safari': '-webkit' }
+
 export default defineE2EConfig({
   testDir: '.',
   outputDir: 'test-results',
   webServer,
-  projects: apps.map((app) => ({
-    name: app,
-    testMatch: APPS[app].testMatch,
-    use: {
-      ...devices['Desktop Chrome'],
-      ...(app === 'flutter' ? flutterUse : {}),
-      ...(app === 'compose' ? composeUse : {}),
-      baseURL: baseURL(app),
-    },
-  })),
+  projects: apps.flatMap((app) =>
+    BROWSERS[app].map((device) => ({
+      name: `${app}${SUFFIX[device]}`,
+      testMatch: APPS[app].testMatch,
+      use: {
+        ...devices[device],
+        ...(app === 'flutter' ? flutterUse : {}),
+        ...(app === 'compose' ? composeUse : {}),
+        baseURL: baseURL(app),
+      },
+    })),
+  ),
 })

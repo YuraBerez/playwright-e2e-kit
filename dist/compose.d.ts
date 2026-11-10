@@ -1,7 +1,8 @@
 export { COMPOSE_TEST_ID_ATTRIBUTE, composeConfig } from './compose/config.js';
 export { composeFixture } from './compose/fixture.js';
 export { COMPOSE_A11Y_ROOT, composeReady, composeReadyWith, type ComposeReadyOptions } from './compose/ready.js';
-export { COMPOSE_BACKING_FIELD_CLASS, composeTap, composeType, type ComposeTapOptions, type ComposeTypeOptions, } from './compose/input.js';
+export { COMPOSE_BACKING_FIELD_CLASS, composeClear, composeReadText, composeTap, composeType, type ComposeClearOptions, type ComposeTapOptions, type ComposeTypeOptions, } from './compose/input.js';
+export { composeScrollUntilVisible, type ComposeScrollOptions } from './compose/scroll.js';
 export { ComposeScreen } from './compose/screen.js';
 export { COMPOSE_DIAGNOSIS_ATTACHMENT, diagnoseCompose, formatComposeDiagnosis, type ComposeDiagnosis, } from './compose/diagnose.js';
 export { scrollUntilVisible, type ScrollUntilVisibleOptions } from './canvas/scroll.js';

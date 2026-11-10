@@ -91,7 +91,9 @@ jobs:
       app-dir: test/fixtures-apps/compose
       port: 4305
       playwright-config: e2e/playwright.config.ts
-      playwright-project: compose
+      # The compose projects of the config: Chromium and WebKit (compose, compose-webkit). Firefox is local only (E2E_COMPOSE_FIREFOX=1).
+      playwright-project: compose*
+      browsers: chromium webkit
       report-dir: e2e/playwright-report
       results-dir: e2e/test-results
       artifact-name: e2e-report-compose
