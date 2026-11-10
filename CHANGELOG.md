@@ -44,7 +44,7 @@ Additive: only apps that import `playwright-e2e-kit/compose` see a change.
   `ComposeScreen.clearText()` / `readText()` (#20).
 - The Compose fixture app gets `/lists` (a 200-item `LazyColumn`, a `LazyRow`, a `LazyColumn` of
   `LazyRow`s) and `/fields` (masked phone, password, multiline and search fields). The Compose
-  e2e projects run in Chromium, Firefox and WebKit, locally and in CI (#19, #20).
+  e2e projects run in Chromium and WebKit in CI, and in Firefox locally with `E2E_COMPOSE_FIREFOX=1` (#19, #20).
 
 ## [0.2.0] - 2026-11-10
 

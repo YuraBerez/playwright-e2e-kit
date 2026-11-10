@@ -873,7 +873,7 @@ committed, so it cannot name a product either.
 
 The kit runs its own suite in a real Chromium against five fixture apps
 (`test/fixtures-apps/`: React, Vue, Angular, Flutter web, Compose Multiplatform web; the Compose
-app also runs in Firefox and WebKit: projects `compose-firefox`, `compose-webkit`), with
+app also runs in WebKit: project `compose-webkit`; Firefox, project `compose-firefox`, only locally with `E2E_COMPOSE_FIREFOX=1`, because the app crashes at startup in headless Firefox in CI), with
 `npm run test:e2e` (`E2E_APP=<app>` for one app; Flutter needs the `flutter` SDK, Compose needs a
 JDK 21 in `JAVA_HOME` and builds with its Gradle wrapper). Before you push a `v*` tag:
 
