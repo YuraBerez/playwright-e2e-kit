@@ -20,6 +20,8 @@ permissions:
 env:
   NODE_VERSION: '24'
   FLUTTER_VERSION: '3.47.8'
+  # Compose fixture: JDK for Gradle (the Gradle, Kotlin and Compose versions are pinned in the app).
+  JAVA_VERSION: '21'
 
 jobs:
   gate:
@@ -46,7 +48,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        app: [react, vue, angular, flutter]
+        app: [react, vue, angular, flutter, compose]
     env:
       E2E_APP: ${{ matrix.app }}
     steps:
@@ -64,6 +66,15 @@ jobs:
           channel: stable
           flutter-version: ${{ env.FLUTTER_VERSION }}
           cache: true
+      - if: matrix.app == 'compose'
+        uses: actions/setup-java@77dd5b2ce225ea11469928ac317850245a74ae78 # v6.2.0
+        with:
+          distribution: temurin
+          java-version: ${{ env.JAVA_VERSION }}
+          cache: gradle
+          cache-dependency-path: |
+            test/fixtures-apps/compose/*.gradle.kts
+            test/fixtures-apps/compose/gradle/wrapper/gradle-wrapper.properties
       - run: npm ci
       - run: npx playwright install --with-deps chromium
       # Installs and builds the fixture app outside the Playwright web-server timeout.

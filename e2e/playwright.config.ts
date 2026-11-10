@@ -1,16 +1,17 @@
-// Real-browser self-tests of the kit: the same suite runs against a React, a Vue and a Flutter
-// web fixture app, plus an Angular one (test/fixtures-apps/). `E2E_APP=react|vue|angular|flutter`
-// runs one app only (CI matrix).
+// Real-browser self-tests of the kit: the same suite runs against a React, a Vue, a Flutter web
+// and a Compose Multiplatform web (wasmJs) fixture app, plus an Angular one (test/fixtures-apps/).
+// `E2E_APP=react|vue|angular|flutter|compose` runs one app only (CI matrix).
 //
 // React, Vue and Angular use the kit's default config (no app-ready hook, default `data-testid`): this
 // proves that Flutter support changes nothing for them. The Angular spec adds one opt-in
-// `angularReady` test. Only the Flutter project uses
-// `flutterConfig()`.
+// `angularReady` test. Only the Flutter project uses `flutterConfig()`, and only the Compose
+// project uses `composeConfig()`.
 import { devices, type PlaywrightTestConfig } from '@playwright/test'
 import { defineE2EConfig } from 'playwright-e2e-kit/config'
+import { composeConfig } from 'playwright-e2e-kit/compose'
 import { flutterConfig } from 'playwright-e2e-kit/flutter'
 
-type App = 'react' | 'vue' | 'angular' | 'flutter'
+type App = 'react' | 'vue' | 'angular' | 'flutter' | 'compose'
 
 const APPS: Record<App, { port: number; out: string; testMatch: RegExp }> = {
   react: { port: 4301, out: 'test/fixtures-apps/react/dist', testMatch: /(specs\/web\.spec|self-tests\/.*\.test)\.ts$/ },
@@ -24,6 +25,11 @@ const APPS: Record<App, { port: number; out: string; testMatch: RegExp }> = {
     port: 4303,
     out: 'test/fixtures-apps/flutter/build/web',
     testMatch: /(specs\/flutter\.spec|self-tests\/.*\.test)\.ts$/,
+  },
+  compose: {
+    port: 4305,
+    out: 'test/fixtures-apps/compose/build/dist/wasmJs/productionExecutable',
+    testMatch: /(specs\/compose\.spec|self-tests\/.*\.test)\.ts$/,
   },
 }
 
@@ -41,13 +47,14 @@ const webServer: PlaywrightTestConfig['webServer'] = apps.map((app) => ({
   cwd: root,
   url: baseURL(app),
   reuseExistingServer: !process.env.CI,
-  // The Flutter build takes about a minute on a cold runner.
+  // The Flutter and Compose builds take a few minutes on a cold runner.
   timeout: 300_000,
   stdout: 'ignore',
   stderr: 'pipe',
 }))
 
 const flutterUse = flutterConfig().use
+const composeUse = composeConfig().use
 
 export default defineE2EConfig({
   testDir: '.',
@@ -59,6 +66,7 @@ export default defineE2EConfig({
     use: {
       ...devices['Desktop Chrome'],
       ...(app === 'flutter' ? flutterUse : {}),
+      ...(app === 'compose' ? composeUse : {}),
       baseURL: baseURL(app),
     },
   })),

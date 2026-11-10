@@ -94,6 +94,18 @@ describe('withoutExclusions matchers', () => {
     const v = violation('label', ['.abc', '.a'])
     expect(withoutExclusions([v], [{ rule: 'label', selector: '.a', ...base }])[0]?.nodes.map((n) => n.target[0])).toEqual(['.abc'])
   })
+
+  it('matches a node inside a shadow root (nested axe target) part by part and as a whole', () => {
+    const shadow = (part: string) => ({ target: [['div > div:nth-child(1)', part]], failureSummary: 'Fix' })
+    const v = { id: 'aria-roles', impact: 'critical', help: 'h', helpUrl: 'u', nodes: [shadow('canvas'), shadow('#other')] }
+    const left = (x: Parameters<typeof withoutExclusions>[1]) => withoutExclusions([v], x)[0]?.nodes.map((n) => n.target[0])
+    expect(left([{ rule: 'aria-roles', selectorPattern: /^canvas$/, ...base }])).toEqual([['div > div:nth-child(1)', '#other']])
+    expect(left([{ rule: 'aria-roles', selector: 'canvas', ...base }])).toEqual([['div > div:nth-child(1)', '#other']])
+    // The joined form still matches, as before.
+    expect(left([{ rule: 'aria-roles', selector: 'div > div:nth-child(1),#other', ...base }])).toEqual([['div > div:nth-child(1)', 'canvas']])
+    // A host part alone selects every node in that shadow root: exact patterns stay the rule.
+    expect(left([{ rule: 'aria-roles', selectorPattern: /^#heading$/, ...base }])).toHaveLength(2)
+  })
 })
 
 describe('formatViolations', () => {

@@ -3,7 +3,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
 // @ts-expect-error plain ESM script without types
-import { isNeutralHost, loadTerms, ownRepo, parseTerms, scanText } from '../scripts/check-no-product-refs.mjs'
+import { isGeneratedFile, isNeutralHost, loadTerms, ownRepo, parseTerms, scanText } from '../scripts/check-no-product-refs.mjs'
 
 // Built from parts, so the repository scan itself does not see these test URLs.
 const HTTPS = 'https:' + '//'
@@ -13,6 +13,23 @@ type Finding = { line: number; match: string; why: string }
 const scan = scanText as (text: string, opts?: object) => Finding[]
 
 describe('check:no-product-refs', () => {
+  it('skips the URL check only for generated lockfiles and the Gradle wrapper', () => {
+    for (const f of [
+      'package-lock.json',
+      'test/fixtures-apps/vue/package-lock.json',
+      'test/fixtures-apps/flutter/pubspec.lock',
+      'test/fixtures-apps/compose/kotlin-js-store/wasm/yarn.lock',
+      'test/fixtures-apps/compose/gradlew',
+      'test/fixtures-apps/compose/gradlew.bat',
+      'test/fixtures-apps/compose/gradle/wrapper/gradle-wrapper.properties',
+    ]) {
+      expect(isGeneratedFile(f), f).toBe(true)
+    }
+    for (const f of ['README.md', 'test/fixtures-apps/compose/build.gradle.kts', 'src/gradlew.ts', 'my-yarn.lock.md']) {
+      expect(isGeneratedFile(f), f).toBe(false)
+    }
+  })
+
   it('parses literal and /regex/ terms, skipping blanks and comments', () => {
     const terms = (parseTerms as (t: string) => RegExp[])('acme\n# comment\n\n/foo-?\\d+/, a.b')
     expect(terms.map(String)).toEqual(['/acme/i', '/foo-?\\d+/i', '/a\\.b/i'])
