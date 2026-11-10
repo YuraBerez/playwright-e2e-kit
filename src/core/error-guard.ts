@@ -8,7 +8,8 @@ export type ErrorKind = 'pageerror' | 'console' | 'response5xx' | 'requestfailed
  * each entry hides a real defect class, so give it a reason and a tracking issue.
  */
 export interface AllowedError {
-  kind: ErrorKind
+  /** One kind, or a list: one entry then covers each listed kind (for example a third-party origin). */
+  kind: ErrorKind | readonly ErrorKind[]
   /** Substring (string) or RegExp, tested against the message and the failing URL. */
   message: string | RegExp
   /** Why this is expected, and the issue that tracks its removal. */
@@ -61,7 +62,7 @@ export function isClientErrorEcho(consoleText: string): boolean {
 export function isAllowed(error: CollectedError, allow: readonly AllowedError[]): boolean {
   return allow.some(
     (rule) =>
-      rule.kind === error.kind &&
+      (Array.isArray(rule.kind) ? rule.kind.includes(error.kind) : rule.kind === error.kind) &&
       (typeof rule.message === 'string'
         ? error.text.includes(rule.message) || error.url.includes(rule.message)
         : matches(rule.message, error.text) || matches(rule.message, error.url)),

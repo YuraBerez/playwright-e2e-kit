@@ -15,7 +15,7 @@ export function isClientErrorEcho(consoleText) {
 }
 /** True when an allow-list entry matches the error (same kind, message or URL matches). */
 export function isAllowed(error, allow) {
-    return allow.some((rule) => rule.kind === error.kind &&
+    return allow.some((rule) => (Array.isArray(rule.kind) ? rule.kind.includes(error.kind) : rule.kind === error.kind) &&
         (typeof rule.message === 'string'
             ? error.text.includes(rule.message) || error.url.includes(rule.message)
             : matches(rule.message, error.text) || matches(rule.message, error.url)));

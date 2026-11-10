@@ -9,6 +9,8 @@ Additive: apps that do not use the new helpers see no change.
 
 ### Added
 
+- `AllowedError.kind` (and `ExpectedError.kind`) accepts a list of kinds: one allow-list entry
+  covers each listed kind. A single kind works as before (#27).
 - `workerResourceFixture(factory)`: `resourceFixture` with `scope: 'worker'`, destroyed at worker
   teardown. `sessionPerWorker({ signIn, saveAfterEachTest, indexedDB })`: signs in once per worker
   (`workerSession` worker fixture) and gives the state to each test's `storageState`; with
