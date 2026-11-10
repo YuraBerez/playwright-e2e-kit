@@ -1,15 +1,24 @@
 import type { Locator } from '@playwright/test'
 import { getAppReady } from '../core/app-ready.js'
-import { scrollUntilVisible, type ScrollUntilVisibleOptions } from '../canvas/scroll.js'
-import { composeTap, composeType, type ComposeTapOptions, type ComposeTypeOptions } from './input.js'
+import {
+  composeClear,
+  composeReadText,
+  composeTap,
+  composeType,
+  type ComposeClearOptions,
+  type ComposeTapOptions,
+  type ComposeTypeOptions,
+} from './input.js'
+import { scrollComposeUntilVisible, type ComposeScrollOptions } from './scroll.js'
 import { composeReady } from './ready.js'
 import { BaseScreen } from '../core/screen.js'
 
 /**
  * `BaseScreen` for a Compose Multiplatform web (wasmJs) app. `open()` / `reload()` wait with the
  * page's app-ready hook, or with `composeReady` when none is set. Subclasses keep their locators
- * `private`, as for `BaseScreen`, and use `tap()` / `typeText()` (a plain `click()` / `fill()`
- * does not reach the canvas) and `scrollUntilVisible()` for items of a lazy list.
+ * `private`, as for `BaseScreen`, and use `tap()` / `typeText()` / `clearText()` / `readText()`
+ * (a plain `click()` / `fill()` does not reach the canvas) and `scrollUntilVisible()` for items of
+ * a lazy list.
  */
 export abstract class ComposeScreen extends BaseScreen {
   protected override async waitReady(): Promise<void> {
@@ -26,8 +35,21 @@ export abstract class ComposeScreen extends BaseScreen {
     await composeType(locator, text, options)
   }
 
-  /** Scrolls `within` (default: the viewport) until `locator` is on screen. See `scrollUntilVisible`. */
-  protected async scrollUntilVisible(locator: Locator, options: ScrollUntilVisibleOptions = {}): Promise<void> {
-    await scrollUntilVisible(this.page, locator, options)
+  /** Clears a Compose text field. See `composeClear`. */
+  protected async clearText(locator: Locator, options: ComposeClearOptions = {}): Promise<void> {
+    await composeClear(locator, options)
+  }
+
+  /** The text that a Compose node shows (a masked field: the formatted value). See `composeReadText`. */
+  protected async readText(locator: Locator, options: ComposeTapOptions = {}): Promise<string> {
+    return composeReadText(locator, options)
+  }
+
+  /**
+   * Scrolls `within` (default: the viewport) until `locator` is on screen, on `axis` `y` or `x`,
+   * with the wheel or a touch drag. See `composeScrollUntilVisible`.
+   */
+  protected async scrollUntilVisible(locator: Locator, options: ComposeScrollOptions = {}): Promise<void> {
+    await scrollComposeUntilVisible(this.page, locator, options)
   }
 }

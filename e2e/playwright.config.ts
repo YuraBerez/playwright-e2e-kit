@@ -56,18 +56,32 @@ const webServer: PlaywrightTestConfig['webServer'] = apps.map((app) => ({
 const flutterUse = flutterConfig().use
 const composeUse = composeConfig().use
 
+// Compose also runs in Firefox and WebKit: its input and scroll helpers send real pointer, wheel
+// and keyboard events to the canvas, and each engine delivers them its own way. The other apps run
+// in Chromium only.
+const BROWSERS: Record<App, string[]> = {
+  react: ['Desktop Chrome'],
+  vue: ['Desktop Chrome'],
+  angular: ['Desktop Chrome'],
+  flutter: ['Desktop Chrome'],
+  compose: ['Desktop Chrome', 'Desktop Firefox', 'Desktop Safari'],
+}
+const SUFFIX: Record<string, string> = { 'Desktop Chrome': '', 'Desktop Firefox': '-firefox', 'Desktop Safari': '-webkit' }
+
 export default defineE2EConfig({
   testDir: '.',
   outputDir: 'test-results',
   webServer,
-  projects: apps.map((app) => ({
-    name: app,
-    testMatch: APPS[app].testMatch,
-    use: {
-      ...devices['Desktop Chrome'],
-      ...(app === 'flutter' ? flutterUse : {}),
-      ...(app === 'compose' ? composeUse : {}),
-      baseURL: baseURL(app),
-    },
-  })),
+  projects: apps.flatMap((app) =>
+    BROWSERS[app].map((device) => ({
+      name: `${app}${SUFFIX[device]}`,
+      testMatch: APPS[app].testMatch,
+      use: {
+        ...devices[device],
+        ...(app === 'flutter' ? flutterUse : {}),
+        ...(app === 'compose' ? composeUse : {}),
+        baseURL: baseURL(app),
+      },
+    })),
+  ),
 })
