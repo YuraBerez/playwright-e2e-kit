@@ -1,7 +1,7 @@
-import type { Browser, BrowserContext, Page, WorkerInfo } from "@playwright/test";
-import { type AppReady, type AppReadyOption } from "./app-ready.js";
-import { CleanupRegistry, type ResourceFactory } from "./data.js";
-import { ErrorGuard, type ErrorGuardOptions } from "./error-guard.js";
+import type { Browser, BrowserContext, Page, WorkerInfo } from '@playwright/test';
+import { type AppReady, type AppReadyOption } from './app-ready.js';
+import { CleanupRegistry, type ResourceFactory } from './data.js';
+import { ErrorGuard, type ErrorGuardOptions } from './error-guard.js';
 /**
  * Playwright reads the fixture function's source to find its dependencies and requires an
  * object-destructuring first argument. Depending on `browserName` (always available) satisfies
@@ -22,14 +22,11 @@ export declare function resourceFixture<T>(factory: ResourceFactory<T>): ({ brow
  * data that is expensive to create and that no test changes, for example a read-only account.
  * Declare it in the second type argument of `test.extend<TestFixtures, WorkerFixtures>()`.
  */
-export declare function workerResourceFixture<T>(factory: ResourceFactory<T>): [
-    ({ browserName }: NoDeps, use: Use<T>) => Promise<void>,
-    {
-        scope: "worker";
-    }
-];
+export declare function workerResourceFixture<T>(factory: ResourceFactory<T>): [({ browserName }: NoDeps, use: Use<T>) => Promise<void>, {
+    scope: 'worker';
+}];
 /** The cookies and origin storage of a signed-in session, as `context.storageState()` returns it. */
-export type SessionState = Awaited<ReturnType<BrowserContext["storageState"]>>;
+export type SessionState = Awaited<ReturnType<BrowserContext['storageState']>>;
 /** The signed-in session of one worker (the `workerSession` worker fixture of `sessionPerWorker`). */
 export interface WorkerSession {
     /** The state that the next test of this worker starts with. */
@@ -66,6 +63,16 @@ export interface SessionPerWorkerFixtures {
 export interface SessionPerWorkerWorkerFixtures {
     workerSession: WorkerSession;
 }
+/**
+ * Signs in once per worker and starts each test of that worker signed in: `workerSession` (a
+ * worker fixture) runs `signIn` on a fresh page and keeps the state; `storageState` gives it to
+ * each test's context. Spread into
+ * `test.extend<SessionPerWorkerFixtures, SessionPerWorkerWorkerFixtures>({ ...sessionPerWorker({ signIn }) })`.
+ *
+ * One state per worker, not one for the whole run: workers that share one saved session share one
+ * refresh token, and an app that rotates refresh tokens revokes the session when a second worker
+ * uses the token that the first one already used.
+ */
 export declare function sessionPerWorker(options: SessionPerWorkerOptions): {
     workerSession: [({ browser }: {
         browser: Browser;
@@ -85,7 +92,7 @@ export declare function sessionPerWorker(options: SessionPerWorkerOptions): {
 };
 export interface CleanupFixtureOptions {
     /** `warn` (default) logs failed cleanup tasks; `throw` fails the test. */
-    onFailure?: "warn" | "throw";
+    onFailure?: 'warn' | 'throw';
 }
 /** A fixture that gives the test a `CleanupRegistry` and runs it at teardown. */
 export declare function cleanupFixture(options?: CleanupFixtureOptions): ({ browserName: _browserName }: NoDeps, use: Use<CleanupRegistry>) => Promise<void>;
@@ -93,14 +100,11 @@ export declare function cleanupFixture(options?: CleanupFixtureOptions): ({ brow
  * The error guard as an auto fixture: it watches the test's browser context and fails the test at
  * teardown. Watch extra contexts with `errorGuard.watch(context)`.
  */
-export declare function errorGuardFixture(options?: ErrorGuardOptions): [
-    ({ context }: {
-        context: BrowserContext;
-    }, use: Use<ErrorGuard>) => Promise<void>,
-    {
-        auto: true;
-    }
-];
+export declare function errorGuardFixture(options?: ErrorGuardOptions): [({ context }: {
+    context: BrowserContext;
+}, use: Use<ErrorGuard>) => Promise<void>, {
+    auto: true;
+}];
 /**
  * Fixtures for the app-ready hook: the `appReady` option (set it with
  * `test.use({ appReady: appReadyOption(hook) })` or `defineE2EConfig({ … }, { appReady: hook })`)

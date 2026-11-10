@@ -1,6 +1,6 @@
-import { setAppReady, } from "./app-ready.js";
-import { CleanupRegistry, formatCleanupFailures, } from "./data.js";
-import { ErrorGuard } from "./error-guard.js";
+import { setAppReady } from './app-ready.js';
+import { CleanupRegistry, formatCleanupFailures } from './data.js';
+import { ErrorGuard } from './error-guard.js';
 /**
  * A fixture that creates a fresh resource for the test and destroys it at teardown, also when the
  * test fails.
@@ -33,8 +33,42 @@ export function workerResourceFixture(factory) {
                 await factory.destroy(resource);
             }
         },
-        { scope: "worker" },
+        { scope: 'worker' },
     ];
+}
+const CONTEXT_OPTION_KEYS = [
+    'baseURL',
+    'acceptDownloads',
+    'bypassCSP',
+    'colorScheme',
+    'contrast',
+    'deviceScaleFactor',
+    'extraHTTPHeaders',
+    'forcedColors',
+    'geolocation',
+    'hasTouch',
+    'httpCredentials',
+    'ignoreHTTPSErrors',
+    'isMobile',
+    'javaScriptEnabled',
+    'locale',
+    'offline',
+    'permissions',
+    'proxy',
+    'reducedMotion',
+    'screen',
+    'serviceWorkers',
+    'timezoneId',
+    'userAgent',
+    'viewport',
+];
+/** The project's context options (`use`) that the sign-in context must share with the tests' contexts. */
+function contextOptions(use) {
+    const picked = {};
+    for (const key of CONTEXT_OPTION_KEYS)
+        if (use[key] !== undefined)
+            picked[key] = use[key];
+    return picked;
 }
 /**
  * Signs in once per worker and starts each test of that worker signed in: `workerSession` (a
@@ -46,51 +80,12 @@ export function workerResourceFixture(factory) {
  * refresh token, and an app that rotates refresh tokens revokes the session when a second worker
  * uses the token that the first one already used.
  */
-const CONTEXT_OPTION_KEYS = [
-    "baseURL",
-    "acceptDownloads",
-    "bypassCSP",
-    "colorScheme",
-    "contrast",
-    "deviceScaleFactor",
-    "extraHTTPHeaders",
-    "forcedColors",
-    "geolocation",
-    "hasTouch",
-    "httpCredentials",
-    "ignoreHTTPSErrors",
-    "isMobile",
-    "javaScriptEnabled",
-    "locale",
-    "offline",
-    "permissions",
-    "proxy",
-    "reducedMotion",
-    "screen",
-    "serviceWorkers",
-    "timezoneId",
-    "userAgent",
-    "viewport",
-];
-/** The project's context options (`use`) that the sign-in context must share with the tests' contexts. */
-function contextOptions(use) {
-    const picked = {};
-    for (const key of CONTEXT_OPTION_KEYS)
-        if (use[key] !== undefined)
-            picked[key] = use[key];
-    return picked;
-}
 export function sessionPerWorker(options) {
-    const save = (context) => options.indexedDB
-        ? context.storageState({ indexedDB: true })
-        : context.storageState();
+    const save = (context) => options.indexedDB ? context.storageState({ indexedDB: true }) : context.storageState();
     return {
         workerSession: [
             async ({ browser }, use, workerInfo) => {
-                const context = await browser.newContext({
-                    ...contextOptions(workerInfo.project.use),
-                    storageState: undefined,
-                });
+                const context = await browser.newContext({ ...contextOptions(workerInfo.project.use), storageState: undefined });
                 let state;
                 try {
                     const page = await context.newPage();
@@ -107,14 +102,14 @@ export function sessionPerWorker(options) {
                 }
                 await use({ state, parallelIndex: workerInfo.parallelIndex });
             },
-            { scope: "worker" },
+            { scope: 'worker' },
         ],
         storageState: async ({ workerSession }, use) => {
             await use(workerSession.state);
         },
         workerSessionSave: [
             options.saveAfterEachTest
-                ? async ({ context, storageState, workerSession, }, use) => {
+                ? async ({ context, storageState, workerSession }, use) => {
                     await use();
                     // Only a test that started from the worker's state saves it back (not one with its own `test.use({ storageState })`).
                     if (storageState === workerSession.state)
@@ -139,10 +134,10 @@ export function cleanupFixture(options = {}) {
         finally {
             // Runs also when the test failed; the test's own error stays the reported one.
             failures = await registry.runAll();
-            if (failures.length > 0 && options.onFailure !== "throw")
+            if (failures.length > 0 && options.onFailure !== 'throw')
                 console.warn(formatCleanupFailures(failures));
         }
-        if (failures.length > 0 && options.onFailure === "throw")
+        if (failures.length > 0 && options.onFailure === 'throw')
             throw new Error(formatCleanupFailures(failures));
     };
 }
