@@ -10,6 +10,8 @@ export class FlutterGreeterScreen extends FlutterScreen implements Greeter {
   readonly path: string = '/'
   private readonly heading = this.page.getByRole('heading', { name: 'Kit fixture' })
   private readonly nameInput = this.page.getByRole('textbox', { name: 'Name' })
+  /** The `Semantics(identifier: 'name-input')` node that wraps the text field. */
+  private readonly nameField = this.page.getByTestId('name-input')
   private readonly greetButton = this.page.getByTestId('greet-button')
   private readonly greeting = this.page.getByTestId('greeting')
   private readonly list = this.page.getByTestId('item-list')
@@ -22,10 +24,16 @@ export class FlutterGreeterScreen extends FlutterScreen implements Greeter {
   }
 
   async enterName(name: string): Promise<void> {
-    // Flutter attaches its text-editing listeners when the field takes the focus: type only after it.
-    await this.nameInput.click()
-    await expect(this.nameInput).toBeFocused()
-    await this.nameInput.fill(name)
+    // Focus, two frames, fill, and a check of the value: Flutter drops a fill made before it takes the field.
+    await this.typeText(this.nameInput, name)
+  }
+
+  /** Same, through the identifier node that wraps the field (`getByTestId`). */
+  async enterNameByTestId(name: string): Promise<void> {
+    await this.typeText(this.nameField, name)
+  }
+
+  async verifyNameValue(name: string): Promise<void> {
     await expect(this.nameInput).toHaveValue(name)
   }
 

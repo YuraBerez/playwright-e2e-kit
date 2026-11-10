@@ -37,6 +37,11 @@ export const CSP_VIOLATION_SCRIPT = `try {
       } catch (_) {
         /* about:blank and sandboxed frames can throw on some APIs: never break the page */
       }`;
+const watchers = new WeakMap();
+/** The error guards that watch `context` (`errorGuardFixture()` or `errorGuard.watch(context)`). */
+export function errorGuardsOf(context) {
+    return watchers.get(context) ?? [];
+}
 /**
  * Collects silent failures that no `expect` looks for: uncaught page errors, `console.error`,
  * responses with status >= `minStatus`, CSP violations, and failed requests (network level),
@@ -45,6 +50,8 @@ export const CSP_VIOLATION_SCRIPT = `try {
 export class ErrorGuard {
     errors = [];
     allow;
+    expected = [];
+    /** Responses with a status from this value on are reported (`response5xx`). */
     minStatus;
     constructor(options = {}) {
         this.allow = options.allow ?? [];
@@ -56,6 +63,9 @@ export class ErrorGuard {
     }
     async watch(context) {
         const browserName = context.browser()?.browserType().name();
+        const guards = watchers.get(context) ?? [];
+        if (!guards.includes(this))
+            watchers.set(context, [...guards, this]);
         // Init scripts are exempt from the page's own CSP.
         await context.addInitScript({ content: CSP_VIOLATION_SCRIPT });
         context.on('weberror', (webError) => {
@@ -92,9 +102,24 @@ export class ErrorGuard {
             });
         });
     }
+    /**
+     * Tells the guard that the test causes this error on purpose. It is matched as an allow-list
+     * entry (same kind, message or URL), but only while the test runs and, with `times`, only that
+     * many times. `networkFault` calls it for each fault that it answers.
+     */
+    expect(error) {
+        const { times, ...entry } = error;
+        this.expected.push({ entry, left: times ?? Number.POSITIVE_INFINITY });
+    }
     add(error) {
-        if (!isAllowed(error, this.allow))
-            this.errors.push(error);
+        if (isAllowed(error, this.allow))
+            return;
+        const expected = this.expected.find((e) => e.left > 0 && isAllowed(error, [e.entry]));
+        if (expected) {
+            expected.left--;
+            return;
+        }
+        this.errors.push(error);
     }
     /** Throws a readable list (kind, message, URL) if anything was collected. */
     assertClean() {
