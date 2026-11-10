@@ -27,6 +27,7 @@ version.
 |---|---|
 | `playwright-e2e-kit` | `BaseScreen`, `BaseComponent`, `BaseSteps`, `boxSteps`, `ErrorGuard`, `errorGuardFixture`, `ResourceFactory`, `resourceFixture`, `CleanupRegistry`, `cleanupFixture`, `deterministicUse` |
 | `playwright-e2e-kit/a11y` | `A11ySteps`, `A11yExclusion`, `withoutExclusions`, `formatViolations` |
+| `playwright-e2e-kit/flutter` | `flutterErrorAllowList` (opt-in Flutter web presets; the main entry never imports it) |
 | `playwright-e2e-kit/config` | `defineE2EConfig`, `baseConfig`, `quarantineGrepInvert` |
 | `playwright-e2e-kit/eslint` | `e2eLayerRules()` (flat config) |
 
@@ -181,14 +182,28 @@ To watch a second browser context (for example a separate session), call
 (`message` is a substring or a RegExp, tested against the message and the URL). Keep the list
 empty if possible. Each entry needs a reason and a tracking issue.
 
+**Flutter web (opt-in):** `import { flutterErrorAllowList } from 'playwright-e2e-kit/flutter'` and
+pass it as `errorGuardFixture({ allow: flutterErrorAllowList })`. It allows only known noise
+(CanvasKit and font fetches from gstatic, service worker registration), each entry with a reason.
+Apps that do not import this entry see no change.
+
 ## Accessibility
 
 `new A11ySteps(page, { exclusions })` (from `playwright-e2e-kit/a11y`) gives
 `expectNoViolations()`. It audits the screen or state that the page shows now against WCAG 2.0/2.1
 **A and AA** rules, and fails with each violation: rule, impact, help URL and the nodes.
 
-Fix violations in the app. Only when a fix must wait, add an exclusion: one axe rule on one CSS
-selector, with a reason and a follow-up issue. Never disable a rule for all elements. The
+Fix violations in the app. Only when a fix must wait, add an exclusion: one axe rule on one
+matcher, with a reason and a follow-up issue. The matcher is one of:
+
+- `selector`: exact CSS selector, compared as a whole with the axe `node.target`;
+- `attribute`: attribute selector, for example `[flt-semantics-identifier="map"]`; matches each
+  node whose target contains it, so a changed tag or parent does not break it;
+- `selectorPattern`: a RegExp tested against each part of the target, for generated ids
+  (`/^#flt-sem-\d+$/`).
+
+When the audit fails, the full axe report (all violations, before exclusions, and the remaining
+ones) is attached to the test as `axe-report.json`. Never disable a rule for all elements. The
 exclusions file is the only place where raw CSS is allowed in an e2e suite. Axe cannot check all
 items (reading order, focus management, screen-reader behaviour), so keep manual checks.
 

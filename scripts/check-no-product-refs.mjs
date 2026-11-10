@@ -30,6 +30,7 @@ export const ALLOWED_HOSTS = [
   'www.npmjs.com',
   'nodejs.org',
   'vitest.dev',
+  'www.gstatic.com',
 ]
 
 /** Single-label hosts and reserved example domains (RFC 2606) never name a real product. */

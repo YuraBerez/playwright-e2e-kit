@@ -1,22 +1,55 @@
 import AxeBuilder from '@axe-core/playwright'
-import { expect, type Page } from '@playwright/test'
+import { expect, test, type Page } from '@playwright/test'
 import { BaseSteps } from './steps.js'
 
 /** WCAG 2.0 and 2.1, levels A and AA. */
 export const WCAG_A_AA_TAGS: readonly string[] = ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa']
 
-/**
- * A documented, tracked accessibility exclusion. No blanket disabling: each entry names ONE axe
- * rule on ONE CSS selector, why it is acceptable for now, and the follow-up issue that removes it.
- */
-export interface A11yExclusion {
+/** Fields every exclusion shares. */
+interface A11yExclusionBase {
   /** axe rule id, e.g. `color-contrast`. */
   rule: string
-  /** CSS selector of the offending element(s), as axe reports it in `node.target`. */
-  selector: string
   reason: string
   /** Follow-up issue that removes the entry. */
   issue: string
+}
+
+/**
+ * A documented, tracked accessibility exclusion. No blanket disabling: each entry names ONE axe
+ * rule on the elements ONE matcher selects, why it is acceptable for now, and the follow-up issue
+ * that removes it. Give exactly one matcher: `selector`, `attribute` or `selectorPattern`.
+ */
+export type A11yExclusion = A11yExclusionBase &
+  (
+    | {
+        /** CSS selector of the offending element(s), compared as a whole with `node.target`. */
+        selector: string
+        attribute?: never
+        selectorPattern?: never
+      }
+    | {
+        /**
+         * Attribute selector, e.g. `[flt-semantics-identifier="map"]`. Matches every node whose
+         * target contains it, so it survives a changed tag, parent or generated id.
+         */
+        attribute: string
+        selector?: never
+        selectorPattern?: never
+      }
+    | {
+        /** Pattern tested against each part of `node.target`, e.g. `/^#flt-sem-\d+$/`. */
+        selectorPattern: RegExp
+        selector?: never
+        attribute?: never
+      }
+  )
+
+/** True when the exclusion's matcher selects this target part. */
+function targetMatches(x: A11yExclusion, target: string): boolean {
+  if (x.selector !== undefined) return target === x.selector
+  if (x.attribute !== undefined) return target.includes(x.attribute)
+  if (x.selectorPattern !== undefined) return new RegExp(x.selectorPattern.source, x.selectorPattern.flags.replace(/[gy]/g, '')).test(target)
+  return false
 }
 
 /** The part of an axe violation that the audit reads. */
@@ -36,7 +69,7 @@ export function withoutExclusions<V extends A11yViolation>(
   return violations
     .map((v) => ({
       ...v,
-      nodes: v.nodes.filter((n) => !exclusions.some((x) => x.rule === v.id && n.target.some((t) => String(t) === x.selector))),
+      nodes: v.nodes.filter((n) => !exclusions.some((x) => x.rule === v.id && n.target.some((t) => targetMatches(x, String(t))))),
     }))
     .filter((v) => v.nodes.length > 0)
 }
@@ -79,10 +112,18 @@ export class A11ySteps extends BaseSteps {
     this.tags = options.tags ?? WCAG_A_AA_TAGS
   }
 
-  /** Fails with every violation (rule, impact, help URL, offending nodes) except the excluded ones. */
+  /** Fails with every violation (rule, impact, help URL, offending nodes) except the excluded ones,
+   * and attaches the full axe report as `axe-report.json`. */
   async expectNoViolations(): Promise<void> {
     const { violations } = await new AxeBuilder({ page: this.page }).withTags([...this.tags]).analyze()
     const remaining = withoutExclusions(violations, this.exclusions)
+    if (remaining.length > 0) {
+      // The full report (all violations, before exclusions) for triage: the message shows the remaining ones only.
+      await test.info().attach('axe-report.json', {
+        body: JSON.stringify({ url: this.page.url(), tags: this.tags, violations, remaining }, null, 2),
+        contentType: 'application/json',
+      })
+    }
     expect(
       remaining.length,
       `${this.page.url()} has ${remaining.length} accessibility violation(s):\n${formatViolations(remaining)}`,

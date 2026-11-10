@@ -32,6 +32,10 @@
       "types": "./dist/eslint.d.ts",
       "default": "./dist/eslint.js"
     },
+    "./flutter": {
+      "types": "./dist/flutter.d.ts",
+      "default": "./dist/flutter.js"
+    },
     "./package.json": "./package.json"
   },
   "files": [
