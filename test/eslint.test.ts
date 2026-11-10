@@ -51,6 +51,14 @@ describe('e2eLayerRules', () => {
     it('allow accessible locators and navigation in routed screens', () => {
       expect(lint('e2e/screens/cart.screen.ts', "import { expect } from '@playwright/test'\nthis.page.getByRole('button'); this.page.goto('/cart')")).toEqual([])
     })
+    it('allow a FlutterScreen subclass: test ids plus the kit scroll helper, no raw mouse', () => {
+      const file = 'e2e/screens/list.screen.ts'
+      const code =
+        "import { FlutterScreen } from 'playwright-e2e-kit/flutter'\n" +
+        "class ListScreen extends FlutterScreen { async showRow() { await this.scrollUntilVisible(this.page.getByTestId('row'), { within: this.page.getByTestId('list') }) } }"
+      expect(lint(file, code)).toEqual([])
+      expect(lint(file, 'this.page.mouse.wheel(0, 100)')).toEqual([expect.stringMatching(/No page.mouse/)])
+    })
     it('ban CSS locators, raw page calls, filter({ has }) and upper-layer imports', () => {
       const file = 'e2e/screens/cart.screen.ts'
       expect(lint(file, "this.page.locator('.x')")).toEqual([expect.stringMatching(/only use getByRole/)])

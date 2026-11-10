@@ -29,6 +29,7 @@ version.
 | `playwright-e2e-kit/a11y` | `A11ySteps`, `A11yExclusion`, `withoutExclusions`, `formatViolations` |
 | `playwright-e2e-kit/config` | `defineE2EConfig`, `baseConfig`, `quarantineGrepInvert` |
 | `playwright-e2e-kit/eslint` | `e2eLayerRules()` (flat config) |
+| `playwright-e2e-kit/flutter` | Flutter web only: `flutterConfig`, `flutterFixture`, `flutterReady`, `enableFlutterSemantics`, `installFlutterFirstFrameListener`, `FlutterScreen`, `scrollUntilVisible` |
 
 ## Layout
 
@@ -231,6 +232,87 @@ export default defineE2EConfig({ /* … */ }, { appReady: nuxtReady }) // or tes
 Ready-made hooks (none is on by default): `domContentReady`, `nuxtReady` (Nuxt hydrated). A screen
 can override `protected waitReady()`. A preset (for example a Flutter one) sets `appReady` the same
 way, through the config `use`.
+
+## Flutter web (`playwright-e2e-kit/flutter`)
+
+Opt-in. An app that does not import `playwright-e2e-kit/flutter` sees no change: the default
+`testIdAttribute` stays `data-testid`, and `BaseScreen` adds no wait. The main entry point never
+imports the Flutter modules (a test checks it).
+
+```ts
+// playwright.config.ts
+import { flutterConfig } from 'playwright-e2e-kit/flutter'
+export default flutterConfig({ testDir: './e2e', use: { baseURL: 'http://localhost:8080' } })
+
+// fixtures
+import { test as base } from '@playwright/test'
+import { flutterFixture } from 'playwright-e2e-kit/flutter'
+export const test = base.extend({ ...flutterFixture() }) // instead of appReadyFixture()
+
+// screens/list.screen.ts
+import { FlutterScreen } from 'playwright-e2e-kit/flutter'
+export class ListScreen extends FlutterScreen {
+  readonly path = '/#/list'
+  private readonly list = this.page.getByTestId('items-list')
+  private row(id: string) { return this.page.getByTestId(`item-${id}`) }
+
+  async openItem(id: string): Promise<void> {
+    await this.scrollUntilVisible(this.row(id), { within: this.list })
+    await this.row(id).click()
+  }
+}
+```
+
+- **`flutterConfig(config, options)`** is `defineE2EConfig()` plus `use.testIdAttribute:
+  'flt-semantics-identifier'` and `appReady: flutterReady`. The app's `use` and `options` win.
+- **`flutterReady`** (an `AppReady`) waits for the `flutter-first-frame` window event, then turns
+  on the semantics tree. `flutterReadyWith({ timeout })` sets the timeout of each wait. A timeout
+  gives an error that tells which step failed.
+- **The first-frame listener must be in place before navigation.** A fast first frame fires
+  before `goto` returns. `flutterFixture()` adds it to the context with `addInitScript`, and
+  `FlutterScreen.open()` adds it to the page. Elsewhere, call
+  `installFlutterFirstFrameListener(page)` before the first `goto`. Without it, `flutterReady`
+  fails at once with an error that says so; it does not wait for a timeout.
+- **Semantics:** Flutter draws on a canvas. Playwright sees widgets only through the semantics
+  tree (`flt-semantics` nodes). If the app calls `SemanticsBinding.instance.ensureSemantics()`,
+  the tree is there and the kit does nothing. If not, the kit clicks the
+  `flt-semantics-placeholder` ("Enable accessibility") once and waits for the tree.
+- **`FlutterScreen`** extends `BaseScreen` (which does not change). It waits with the page's
+  app-ready hook, or with `flutterReady` when none is set. Locators stay `private`; the ESLint
+  layer rules apply as for any screen.
+- **`scrollUntilVisible(locator, { within, maxSwipes, direction, settleTimeout })`**: list items
+  outside the viewport are not in the semantics tree, and `scrollIntoViewIfNeeded` cannot reach
+  them. The helper moves the mouse over `within` (default: the viewport), turns the wheel by 80% of
+  its size, and stops when the centre of `locator` is inside `within`. After `maxSwipes` (default
+  10) it throws. The raw `page.mouse` stays inside the kit, so screens do not need it.
+
+### How the app exposes widgets
+
+| In the app (Flutter) | In the DOM | Locator |
+|---|---|---|
+| `Semantics(identifier: 'login-submit', child: …)` (Flutter 3.19+) | `flt-semantics-identifier="login-submit"` | `getByTestId('login-submit')` with `flutterConfig()` |
+| `Semantics(label: 'Close', button: true, child: …)` | `role="button"`, `aria-label="Close"` | `getByRole('button', { name: 'Close' })` |
+| `Text('Hello')` | text or `aria-label` on a `flt-semantics` node | `getByText('Hello')` |
+| `Semantics(header: true, child: Text('Title'))` | `role="heading"` | `getByRole('heading', { name: 'Title' })` |
+
+The identifier is not read by screen readers, so it is safe as a test id. Prefer roles and labels;
+add an identifier only when no accessible locator exists (as for `data-testid`).
+
+### Role-mapping quirks
+
+- **Buttons:** Material buttons (`ElevatedButton`, `TextButton`, `IconButton`) get
+  `role="button"`. A `GestureDetector` or `InkWell` alone gets no button role: wrap it in
+  `Semantics(button: true, label: …)` or give it an identifier. An `IconButton` has a name only if
+  it has a `tooltip` or a semantic label.
+- **Text fields:** a `TextField` becomes a real `<input>` (or `<textarea>`) with
+  `role="textbox"`. Its name comes from `InputDecoration.labelText` (or `hintText`), so use
+  `getByRole('textbox', { name })` or `getByLabel`. Click the field before `fill()` so that Flutter
+  gives it the focus; if `fill()` does not reach the app, use `pressSequentially()`.
+- **Lists:** `ListView` items get no `list` / `listitem` role by default, and only the visible
+  items (plus a small cache) are in the tree. Give the list and the items identifiers, and use
+  `scrollUntilVisible` before you act on an item.
+- **Merged semantics:** a widget such as `ListTile` merges the labels of its children into one
+  node, so the accessible name can be "Title Subtitle". Match it with a RegExp or `exact: false`.
 
 ## Flakes
 
