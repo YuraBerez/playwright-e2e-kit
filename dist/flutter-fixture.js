@@ -1,3 +1,4 @@
+import { appReadyOption } from './app-ready.js';
 import { appReadyFixture } from './fixtures.js';
 import { flutterReady, installFlutterFirstFrameListener } from './flutter-ready.js';
 /**
@@ -8,7 +9,8 @@ import { flutterReady, installFlutterFirstFrameListener } from './flutter-ready.
 export function flutterFixture() {
     return {
         ...appReadyFixture(),
-        appReady: [flutterReady, { option: true }],
+        // Wrapped: Playwright would call a bare `flutterReady` as the fixture function.
+        appReady: [appReadyOption(flutterReady), { option: true }],
         context: async ({ context }, use) => {
             await installFlutterFirstFrameListener(context);
             await use(context);

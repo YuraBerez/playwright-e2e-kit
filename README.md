@@ -25,7 +25,7 @@ version.
 
 | Import | Contents |
 |---|---|
-| `playwright-e2e-kit` | `BaseScreen`, `BaseComponent`, `BaseSteps`, `boxSteps`, `ErrorGuard`, `errorGuardFixture`, `ResourceFactory`, `resourceFixture`, `CleanupRegistry`, `cleanupFixture`, `deterministicUse`, `appReadyFixture`, `AppReady`, `domContentReady`, `nuxtReady` |
+| `playwright-e2e-kit` | `BaseScreen`, `BaseComponent`, `BaseSteps`, `boxSteps`, `ErrorGuard`, `errorGuardFixture`, `ResourceFactory`, `resourceFixture`, `CleanupRegistry`, `cleanupFixture`, `deterministicUse`, `appReadyFixture`, `AppReady`, `appReadyOption`, `domContentReady`, `nuxtReady`, `angularReady` |
 | `playwright-e2e-kit/a11y` | `A11ySteps`, `A11yExclusion`, `withoutExclusions`, `formatViolations` |
 | `playwright-e2e-kit/config` | `defineE2EConfig`, `baseConfig`, `quarantineGrepInvert` |
 | `playwright-e2e-kit/eslint` | `e2eLayerRules()` (flat config) |
@@ -238,8 +238,7 @@ hook they do only `goto` / `reload`, so an app that sets nothing sees no change.
 import { test as base } from '@playwright/test'
 import { appReadyFixture, type AppReady } from 'playwright-e2e-kit'
 
-// Playwright's fixture types do not accept a function as an option value, so the cast is typing only.
-export const test = base.extend<{ appReady: AppReady | undefined }>(appReadyFixture() as never)
+export const test = base.extend<{ appReady: AppReady | undefined }>(appReadyFixture())
 
 // playwright.config.ts
 import { nuxtReady } from 'playwright-e2e-kit'
@@ -248,9 +247,10 @@ import { defineE2EConfig } from 'playwright-e2e-kit/config'
 export default defineE2EConfig({ testDir: './e2e' }, { appReady: nuxtReady })
 ```
 
-Ready-made hooks (none is on by default): `domContentReady`, `nuxtReady` (Nuxt hydrated), and
-`angularReady` (Angular stable; added in #5, planned for 0.2.0: waits for `getAllAngularTestabilities()` to be
-stable, else for the root `ng-version` attribute, so zoneless apps work too). A screen
+Ready-made hooks (none is on by default): `domContentReady`, `nuxtReady` (Nuxt hydrated),
+`angularReady` (Angular bootstrapped; every testability stable, or the `ng-version` root when the
+app is zoneless). Playwright calls a bare function in `test.use()` as a fixture, so wrap a hook
+there with `appReadyOption(hook)`; `defineE2EConfig` and `flutterConfig` wrap it for you. A screen
 can override `protected waitReady()`. A preset (for example a Flutter one) sets `appReady` the same
 way, through the config `use`.
 
@@ -287,9 +287,8 @@ import { test as base } from '@playwright/test'
 import { errorGuardFixture, type AppReady, type ErrorGuard } from 'playwright-e2e-kit'
 import { flutterErrorAllowList, flutterFixture } from 'playwright-e2e-kit/flutter'
 
-// Playwright's fixture types do not accept a function as an option value, so the cast is typing only.
 export const test = base.extend<{ appReady: AppReady | undefined; errorGuard: ErrorGuard }>({
-  ...(flutterFixture() as object), // instead of appReadyFixture()
+  ...flutterFixture(), // instead of appReadyFixture()
   errorGuard: errorGuardFixture({ allow: flutterErrorAllowList }),
 })
 ```
@@ -521,6 +520,17 @@ message or a tag message contains a term from the deny-list, or a URL whose host
 allow-list. The deny-list comes from the `NO_PRODUCT_REFS` environment variable (comma separated)
 and from the git-ignored file `.no-product-refs` (one term or `/regex/` per line). The list is never
 committed, so it cannot name a product either.
+
+## Release checklist
+
+The kit runs its own suite in a real Chromium against four fixture apps
+(`test/fixtures-apps/`: React, Vue, Angular, Flutter web), with `npm run test:e2e`
+(`E2E_APP=<app>` for one app; Flutter needs the `flutter` SDK). Before you push a `v*` tag:
+
+1. CI on the release commit is green: the `gate` job and **all four** `e2e` jobs (react, vue,
+   angular, flutter).
+2. `dist/` matches the sources (`npm run lint` checks it).
+3. A change that breaks a consumer has a new major version.
 
 ## License
 

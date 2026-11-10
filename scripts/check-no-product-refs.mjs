@@ -10,7 +10,8 @@
 // 2. URL hosts: every http(s) URL must point to a host on ALLOWED_HOSTS, a single-label host
 //    (`localhost`, `app`) or a reserved example domain (`example.com`, `*.test`, `*.invalid`,
 //    `*.example`, `*.localhost`). A github.com URL must point to this package's own repository
-//    (package.json `repository`). The generated `package-lock.json` is not scanned for URLs.
+//    (package.json `repository`). Generated lockfiles (`package-lock.json`, `pubspec.lock`) are not
+//    scanned for URLs: they name their registries.
 //
 // Usage: node scripts/check-no-product-refs.mjs [--history]
 //   --history  also scans commit and tag messages.
@@ -104,7 +105,7 @@ function main(argv) {
     if (!existsSync(file)) continue
     const buf = readFileSync(file)
     if (buf.includes(0)) continue // binary
-    const urls = !file.endsWith('package-lock.json')
+    const urls = !/(^|\/)(package-lock\.json|pubspec\.lock)$/.test(file)
     for (const f of scanText(buf.toString('utf8'), { ...opts, urls })) report.push(`${file}:${f.line}: ${f.why}: ${f.match}`)
     for (const f of scanText(file, opts)) report.push(`${file}: file name: ${f.why}: ${f.match}`)
   }

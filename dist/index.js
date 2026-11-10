@@ -4,4 +4,4 @@ export { CSP_VIOLATION_SCRIPT, ErrorGuard, formatErrors, isAllowed, isBenignAbor
 export { CleanupRegistry, formatCleanupFailures } from './data.js';
 export { appReadyFixture, cleanupFixture, errorGuardFixture, resourceFixture } from './fixtures.js';
 export { DEFAULT_LOCALE, DEFAULT_TIMEZONE, deterministicUse } from './determinism.js';
-export { domContentReady, getAppReady, nuxtReady, setAppReady } from './app-ready.js';
+export { angularReady, appReadyOption, domContentReady, getAppReady, nuxtReady, setAppReady, } from './app-ready.js';

@@ -1,4 +1,5 @@
 import { defineConfig } from '@playwright/test';
+import { appReadyOption } from './app-ready.js';
 import { deterministicUse } from './determinism.js';
 function isCi(options) {
     return options.ci ?? !!process.env.CI;
@@ -34,7 +35,7 @@ export function baseConfig(options = {}) {
         use: {
             trace: 'retain-on-failure',
             ...deterministicUse(options.determinism),
-            ...(options.appReady ? { appReady: options.appReady } : {}),
+            ...(options.appReady ? { appReady: appReadyOption(options.appReady) } : {}),
         },
     };
 }

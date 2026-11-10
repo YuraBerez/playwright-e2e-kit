@@ -50,12 +50,14 @@ export function errorGuardFixture(options = {}) {
     ];
 }
 /**
- * Fixtures for the app-ready hook: the `appReady` option (set it with `test.use({ appReady })` or
- * `use: { appReady }` in the config) and a `page` override that registers it for `BaseScreen`.
- * Spread into `test.extend({ ...appReadyFixture() })`.
+ * Fixtures for the app-ready hook: the `appReady` option (set it with
+ * `test.use({ appReady: appReadyOption(hook) })` or `defineE2EConfig({ … }, { appReady: hook })`)
+ * and a `page` override that registers it for `BaseScreen`. Spread into
+ * `test.extend({ ...appReadyFixture() })`.
  */
 export function appReadyFixture() {
     return {
+        // Default: no hook. A non-function value; a hook arrives through `appReadyOption()`.
         appReady: [undefined, { option: true }],
         page: async ({ page, appReady }, use) => {
             setAppReady(page, appReady);
