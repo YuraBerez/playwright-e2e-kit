@@ -1,5 +1,5 @@
 import { defineConfig, type PlaywrightTestConfig } from '@playwright/test'
-import type { AppReady } from './app-ready.js'
+import { appReadyOption, type AppReady } from './app-ready.js'
 import { deterministicUse, type Determinism } from './determinism.js'
 
 export interface E2EConfigOptions {
@@ -11,7 +11,10 @@ export interface E2EConfigOptions {
   includeQuarantine?: boolean
   /** Timezone and locale pinned for every project. */
   determinism?: Partial<Determinism>
-  /** App-ready hook, set as the `appReady` option in `use`. Default: none. A preset sets it. */
+  /**
+   * App-ready hook, set as the `appReady` option in `use` (wrapped with `appReadyOption`, because
+   * Playwright calls a bare function in `use` as a fixture). Default: none. A preset sets it.
+   */
   appReady?: AppReady
 }
 
@@ -51,7 +54,7 @@ export function baseConfig(options: E2EConfigOptions = {}): PlaywrightTestConfig
     use: {
       trace: 'retain-on-failure',
       ...deterministicUse(options.determinism),
-      ...(options.appReady ? { appReady: options.appReady } : {}),
+      ...(options.appReady ? { appReady: appReadyOption(options.appReady) } : {}),
     },
   }
 }

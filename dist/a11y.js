@@ -13,12 +13,34 @@ function targetMatches(x, target) {
         return new RegExp(x.selectorPattern.source, x.selectorPattern.flags.replace(/[gy]/g, '')).test(target);
     return false;
 }
+/**
+ * True when the element's opening tag (axe `node.html`) has the attribute of an attribute
+ * selector: `[name]` or `[name="value"]` (single, double or no quotes).
+ */
+export function htmlHasAttribute(html, attribute) {
+    const m = /^\[\s*([^\s~|^$*=\]]+)\s*(?:=\s*(?:"([^"]*)"|'([^']*)'|([^\]\s]*)))?\s*\]$/.exec(attribute);
+    if (!html || !m)
+        return false;
+    const name = m[1].replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const tag = /^<[^>]*>/.exec(html)?.[0] ?? html;
+    const value = m[2] ?? m[3] ?? m[4];
+    if (value === undefined)
+        return new RegExp(`\\s${name}(\\s|=|/?>)`).test(tag);
+    const v = value.replace(/&/g, '&amp;').replace(/"/g, '&quot;');
+    return tag.includes(` ${m[1]}="${v}"`);
+}
+/** True when the exclusion selects the node, through one of its target parts or its element. */
+function nodeMatches(x, node) {
+    if (node.target.some((t) => targetMatches(x, String(t))))
+        return true;
+    return x.attribute !== undefined && htmlHasAttribute(node.html, x.attribute);
+}
 /** Removes excluded nodes, then the violations that have no node left. */
 export function withoutExclusions(violations, exclusions) {
     return violations
         .map((v) => ({
         ...v,
-        nodes: v.nodes.filter((n) => !exclusions.some((x) => x.rule === v.id && n.target.some((t) => targetMatches(x, String(t))))),
+        nodes: v.nodes.filter((n) => !exclusions.some((x) => x.rule === v.id && nodeMatches(x, n))),
     }))
         .filter((v) => v.nodes.length > 0);
 }

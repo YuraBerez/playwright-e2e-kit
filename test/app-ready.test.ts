@@ -1,10 +1,12 @@
 import { describe, expect, it, vi } from 'vitest'
 import type { Page } from '@playwright/test'
-import { domContentReady, getAppReady, nuxtReady, setAppReady } from '../src/app-ready.js'
+import { angularReady, appReadyOption, domContentReady, getAppReady, nuxtReady, setAppReady } from '../src/app-ready.js'
 import { appReadyFixture } from '../src/fixtures.js'
 import { baseConfig, defineE2EConfig } from '../src/config.js'
+import { resolveOption } from './option-helper.js'
 
 const page = () => ({}) as unknown as Page
+
 
 describe('registry', () => {
   it('stores, returns and removes a hook per page', () => {
@@ -40,6 +42,43 @@ describe('helpers', () => {
     expect(fn()).toBe(true)
     delete g.window
   })
+
+  it('angularReady waits for stable testabilities, else for the ng-version root', async () => {
+    const waitForFunction = vi.fn(async () => undefined)
+    await angularReady({ waitForFunction } as unknown as Page)
+    const fn = (waitForFunction.mock.calls[0] as unknown as [() => boolean])[0]
+    const g = globalThis as unknown as { window?: unknown; document?: unknown }
+    const doc = (root: boolean) => ({ querySelector: (s: string) => (root && s === '[ng-version]' ? {} : null) })
+    // Zoneless production build: no testabilities, the bootstrapped root has ng-version.
+    g.window = {}
+    g.document = doc(false)
+    expect(fn()).toBe(false)
+    g.document = doc(true)
+    expect(fn()).toBe(true)
+    // An empty testability list falls back to ng-version too.
+    g.window = { getAllAngularTestabilities: () => [] }
+    expect(fn()).toBe(true)
+    // With testabilities, every one must be stable (ng-version alone is not enough).
+    g.window = { getAllAngularTestabilities: () => [{ isStable: () => true }, { isStable: () => false }] }
+    expect(fn()).toBe(false)
+    g.window = { getAllAngularTestabilities: () => [{ isStable: () => true }, { isStable: () => true }] }
+    g.document = doc(false)
+    expect(fn()).toBe(true)
+    delete g.window
+    delete g.document
+  })
+})
+
+describe('appReadyOption', () => {
+  it('is a fixture function that provides the hook', async () => {
+    const hook = vi.fn(async () => undefined)
+    expect(await resolveOption(appReadyOption(hook))).toBe(hook)
+    expect(await resolveOption(appReadyOption(undefined))).toBeUndefined()
+  })
+
+  it('keeps the destructured first argument Playwright requires', () => {
+    expect(appReadyOption(nuxtReady).toString()).toMatch(/^async \(\{/)
+  })
 })
 
 describe('appReadyFixture', () => {
@@ -63,9 +102,13 @@ describe('config', () => {
     expect(baseConfig().use).not.toHaveProperty('appReady')
   })
 
-  it('sets the option in use, and a preset can pass it through defineE2EConfig', () => {
+  it('sets the option in use, wrapped as a fixture, and a preset can pass it through defineE2EConfig', async () => {
     const hook = async () => undefined
-    expect((baseConfig({ appReady: hook }).use as Record<string, unknown>).appReady).toBe(hook)
-    expect((defineE2EConfig({}, { appReady: hook }).use as Record<string, unknown>).appReady).toBe(hook)
+    const base = (baseConfig({ appReady: hook }).use as Record<string, unknown>).appReady
+    const defined = (defineE2EConfig({}, { appReady: hook }).use as Record<string, unknown>).appReady
+    // A bare function in `use` would be called by Playwright as a fixture function.
+    expect(base).not.toBe(hook)
+    expect(await resolveOption(base)).toBe(hook)
+    expect(await resolveOption(defined)).toBe(hook)
   })
 })

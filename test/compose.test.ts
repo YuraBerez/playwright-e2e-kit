@@ -8,7 +8,6 @@ import {
   COMPOSE_BACKING_FIELD_CLASS,
   COMPOSE_TEST_ID_ATTRIBUTE,
   ComposeScreen,
-  composeAppReadyOption,
   composeConfig,
   composeErrorAllowList,
   composeFixture,
@@ -17,9 +16,9 @@ import {
   composeTap,
   composeType,
   scrollUntilVisible,
-  type ComposeAppReadyOption,
 } from '../src/compose.js'
 import { scrollUntilVisible as flutterScrollUntilVisible } from '../src/flutter.js'
+import { resolveOption } from './option-helper.js'
 
 const asPage = (p: unknown) => p as Page
 
@@ -38,15 +37,6 @@ function fakePage(opts: { root?: boolean; nodes?: boolean } = {}) {
     reload: vi.fn(async () => null),
   }
   return page
-}
-
-/** Resolves the value that an `appReady` option fixture provides. */
-async function optionValue(option: ComposeAppReadyOption): Promise<AppReady | undefined> {
-  let value: AppReady | undefined
-  await option({ browserName: 'chromium' }, async (hook) => {
-    value = hook
-  })
-  return value
 }
 
 describe('composeReady', () => {
@@ -157,7 +147,8 @@ describe('composeFixture', () => {
   it('defaults appReady to composeReady, wrapped as a fixture function', async () => {
     const [option, meta] = composeFixture().appReady
     expect(meta).toEqual({ option: true })
-    expect(await optionValue(option!)).toBe(composeReady)
+    expect(option).not.toBe(composeReady)
+    expect(await resolveOption(option)).toBe(composeReady)
   })
 
   it('keeps the destructured first arguments Playwright requires', () => {
@@ -172,10 +163,6 @@ describe('composeFixture', () => {
       expect(getAppReady(p)).toBe(composeReady)
     })
   })
-
-  it('composeAppReadyOption can provide no hook', async () => {
-    expect(await optionValue(composeAppReadyOption(undefined))).toBeUndefined()
-  })
 })
 
 describe('composeConfig', () => {
@@ -186,14 +173,14 @@ describe('composeConfig', () => {
     expect(COMPOSE_TEST_ID_ATTRIBUTE).toBe('id')
     expect(u.testIdAttribute).toBe('id')
     expect(u.baseURL).toBe('http://localhost:1')
-    expect(await optionValue(u.appReady as ComposeAppReadyOption)).toBe(composeReady)
+    expect(await resolveOption(u.appReady)).toBe(composeReady)
   })
 
   it('lets the app override the attribute, the hook and the other options', async () => {
     const hook: AppReady = async () => undefined
     const u = use(composeConfig({ use: { testIdAttribute: 'data-qa' } }, { appReady: hook, ci: true }))
     expect(u.testIdAttribute).toBe('data-qa')
-    expect(await optionValue(u.appReady as ComposeAppReadyOption)).toBe(hook)
+    expect(await resolveOption(u.appReady)).toBe(hook)
     expect(composeConfig({}, { ci: true }).retries).toBe(1)
   })
 

@@ -14,7 +14,7 @@ vi.mock('@playwright/test', () => ({
   test: { info: () => ({ attach }), step: (_t: string, body: () => unknown) => body() },
 }))
 
-const { A11ySteps, WCAG_A_AA_TAGS, formatViolations, withoutExclusions } = await import('../src/a11y.js')
+const { A11ySteps, WCAG_A_AA_TAGS, formatViolations, htmlHasAttribute, withoutExclusions } = await import('../src/a11y.js')
 type Page = ConstructorParameters<typeof A11ySteps>[0]
 
 const violation = (id: string, targets: string[], impact: string | null = 'serious') => ({
@@ -49,6 +49,33 @@ describe('withoutExclusions matchers', () => {
   it('matches an attribute selector inside the target', () => {
     const r = withoutExclusions([flt], [{ rule: 'label', attribute: '[flt-semantics-identifier="map"]', ...base }])
     expect(r).toEqual([])
+  })
+
+  it('matches the attribute on the element when axe targets it by id (as on every Flutter node)', () => {
+    const byId = {
+      ...violation('label', ['#flt-semantic-node-7']),
+      nodes: [
+        { target: ['#flt-semantic-node-7'], html: '<flt-semantics id="flt-semantic-node-7" flt-semantics-identifier="map" role="group">' },
+        { target: ['#flt-semantic-node-8'], html: '<flt-semantics id="flt-semantic-node-8" flt-semantics-identifier="mapx">' },
+      ],
+    }
+    const r = withoutExclusions([byId], [{ rule: 'label', attribute: '[flt-semantics-identifier="map"]', ...base }])
+    expect(r[0]?.nodes.map((n) => n.target[0])).toEqual(['#flt-semantic-node-8'])
+  })
+
+  it('reads the attribute from the opening tag only, with any quoting', () => {
+    const html = '<div data-x="a b" data-flag id="i"><span data-y="z"></span></div>'
+    expect(htmlHasAttribute(html, '[data-x="a b"]')).toBe(true)
+    expect(htmlHasAttribute(html, "[data-x='a b']")).toBe(true)
+    expect(htmlHasAttribute(html, '[id=i]')).toBe(true)
+    expect(htmlHasAttribute(html, '[data-flag]')).toBe(true)
+    expect(htmlHasAttribute(html, '[data-x]')).toBe(true)
+    expect(htmlHasAttribute(html, '[data-y="z"]')).toBe(false)
+    expect(htmlHasAttribute(html, '[data-x="a"]')).toBe(false)
+    expect(htmlHasAttribute(html, '[data]')).toBe(false)
+    expect(htmlHasAttribute('<a title="x &quot;q&quot;">', '[title=\'x "q"\']')).toBe(true)
+    expect(htmlHasAttribute(undefined, '[data-x]')).toBe(false)
+    expect(htmlHasAttribute(html, 'data-x')).toBe(false)
   })
 
   it('does not match an attribute that is absent or a different rule', () => {

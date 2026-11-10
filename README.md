@@ -25,7 +25,7 @@ version.
 
 | Import | Contents |
 |---|---|
-| `playwright-e2e-kit` | `BaseScreen`, `BaseComponent`, `BaseSteps`, `boxSteps`, `ErrorGuard`, `errorGuardFixture`, `ResourceFactory`, `resourceFixture`, `CleanupRegistry`, `cleanupFixture`, `deterministicUse`, `appReadyFixture`, `AppReady`, `domContentReady`, `nuxtReady` |
+| `playwright-e2e-kit` | `BaseScreen`, `BaseComponent`, `BaseSteps`, `boxSteps`, `ErrorGuard`, `errorGuardFixture`, `ResourceFactory`, `resourceFixture`, `CleanupRegistry`, `cleanupFixture`, `deterministicUse`, `appReadyFixture`, `AppReady`, `appReadyOption`, `domContentReady`, `nuxtReady`, `angularReady` |
 | `playwright-e2e-kit/a11y` | `A11ySteps`, `A11yExclusion`, `withoutExclusions`, `formatViolations` |
 | `playwright-e2e-kit/config` | `defineE2EConfig`, `baseConfig`, `quarantineGrepInvert` |
 | `playwright-e2e-kit/eslint` | `e2eLayerRules()` (flat config) |
@@ -235,16 +235,23 @@ optional hook, `AppReady = (page: Page) => Promise<void>`. `open()` and `reload(
 hook they do only `goto` / `reload`, so an app that sets nothing sees no change.
 
 ```ts
-// fixtures
+// fixtures/app.ts
 import { test as base } from '@playwright/test'
-import { appReadyFixture } from 'playwright-e2e-kit'
-export const test = base.extend({ ...appReadyFixture() })
+import { appReadyFixture, type AppReady } from 'playwright-e2e-kit'
+
+export const test = base.extend<{ appReady: AppReady | undefined }>(appReadyFixture())
 
 // playwright.config.ts
-export default defineE2EConfig({ /* … */ }, { appReady: nuxtReady }) // or test.use({ appReady })
+import { nuxtReady } from 'playwright-e2e-kit'
+import { defineE2EConfig } from 'playwright-e2e-kit/config'
+
+export default defineE2EConfig({ testDir: './e2e' }, { appReady: nuxtReady })
 ```
 
-Ready-made hooks (none is on by default): `domContentReady`, `nuxtReady` (Nuxt hydrated). A screen
+Ready-made hooks (none is on by default): `domContentReady`, `nuxtReady` (Nuxt hydrated),
+`angularReady` (Angular bootstrapped; every testability stable, or the `ng-version` root when the
+app is zoneless). Playwright calls a bare function in `test.use()` as a fixture, so wrap a hook
+there with `appReadyOption(hook)`; `defineE2EConfig` and `flutterConfig` wrap it for you. A screen
 can override `protected waitReady()`. A preset (for example a Flutter one) sets `appReady` the same
 way, through the config `use`.
 
@@ -252,56 +259,47 @@ way, through the config `use`.
 
 Opt-in. An app that does not import `playwright-e2e-kit/flutter` sees no change: the default
 `testIdAttribute` stays `data-testid`, and `BaseScreen` adds no wait. The main entry point never
-imports the Flutter modules (a test checks it).
+imports the Flutter modules (a test checks it). See the [framework matrix](#framework-matrix) for
+what is on by default.
+
+Flutter draws on a canvas. Playwright sees a widget only through the **semantics tree**: `flt-semantics`
+DOM nodes that Flutter builds from `Semantics` widgets and widget labels. This guide follows the order of
+a suite: app setup, config and fixtures, locators, waits, screens, then limits.
+
+### 1. Enable semantics in the app
+
+- **In the app:** call `SemanticsBinding.instance.ensureSemantics()` in `main()` of the build that
+  e2e tests run against. The tree is then always on and the kit changes nothing. A build flag of
+  your own (for example a `--dart-define`) can guard the call; the kit does not read any flag.
+- **Without the call:** Flutter web adds an `flt-semantics-placeholder` ("Enable accessibility")
+  and builds the tree only after it is activated. `flutterReady` activates it once and waits for the
+  first `flt-semantics` node. This is the default path, so an app needs no change to start.
+
+### 2. Config and fixtures
 
 ```ts
 // playwright.config.ts
 import { flutterConfig } from 'playwright-e2e-kit/flutter'
+
 export default flutterConfig({ testDir: './e2e', use: { baseURL: 'http://localhost:8080' } })
 
-// fixtures
+// fixtures/app.ts
 import { test as base } from '@playwright/test'
-import { flutterFixture } from 'playwright-e2e-kit/flutter'
-export const test = base.extend({ ...flutterFixture() }) // instead of appReadyFixture()
+import { errorGuardFixture, type AppReady, type ErrorGuard } from 'playwright-e2e-kit'
+import { flutterErrorAllowList, flutterFixture } from 'playwright-e2e-kit/flutter'
 
-// screens/list.screen.ts
-import { FlutterScreen } from 'playwright-e2e-kit/flutter'
-export class ListScreen extends FlutterScreen {
-  readonly path = '/#/list'
-  private readonly list = this.page.getByTestId('items-list')
-  private row(id: string) { return this.page.getByTestId(`item-${id}`) }
-
-  async openItem(id: string): Promise<void> {
-    await this.scrollUntilVisible(this.row(id), { within: this.list })
-    await this.row(id).click()
-  }
-}
+export const test = base.extend<{ appReady: AppReady | undefined; errorGuard: ErrorGuard }>({
+  ...flutterFixture(), // instead of appReadyFixture()
+  errorGuard: errorGuardFixture({ allow: flutterErrorAllowList }),
+})
 ```
 
 - **`flutterConfig(config, options)`** is `defineE2EConfig()` plus `use.testIdAttribute:
   'flt-semantics-identifier'` and `appReady: flutterReady`. The app's `use` and `options` win.
-- **`flutterReady`** (an `AppReady`) waits for the `flutter-first-frame` window event, then turns
-  on the semantics tree. `flutterReadyWith({ timeout })` sets the timeout of each wait. A timeout
-  gives an error that tells which step failed.
-- **The first-frame listener must be in place before navigation.** A fast first frame fires
-  before `goto` returns. `flutterFixture()` adds it to the context with `addInitScript`, and
-  `FlutterScreen.open()` adds it to the page. Elsewhere, call
-  `installFlutterFirstFrameListener(page)` before the first `goto`. Without it, `flutterReady`
-  fails at once with an error that says so; it does not wait for a timeout.
-- **Semantics:** Flutter draws on a canvas. Playwright sees widgets only through the semantics
-  tree (`flt-semantics` nodes). If the app calls `SemanticsBinding.instance.ensureSemantics()`,
-  the tree is there and the kit does nothing. If not, the kit clicks the
-  `flt-semantics-placeholder` ("Enable accessibility") once and waits for the tree.
-- **`FlutterScreen`** extends `BaseScreen` (which does not change). It waits with the page's
-  app-ready hook, or with `flutterReady` when none is set. Locators stay `private`; the ESLint
-  layer rules apply as for any screen.
-- **`scrollUntilVisible(locator, { within, maxSwipes, direction, settleTimeout })`**: list items
-  outside the viewport are not in the semantics tree, and `scrollIntoViewIfNeeded` cannot reach
-  them. The helper moves the mouse over `within` (default: the viewport), turns the wheel by 80% of
-  its size, and stops when the centre of `locator` is inside `within`. After `maxSwipes` (default
-  10) it throws. The raw `page.mouse` stays inside the kit, so screens do not need it.
+- **`flutterFixture()`** replaces `appReadyFixture()`: the `appReady` option defaults to
+  `flutterReady`, and the context gets the first-frame listener (see "Waits").
 
-### How the app exposes widgets
+### 3. Locators: what the app exposes
 
 | In the app (Flutter) | In the DOM | Locator |
 |---|---|---|
@@ -310,10 +308,12 @@ export class ListScreen extends FlutterScreen {
 | `Text('Hello')` | text or `aria-label` on a `flt-semantics` node | `getByText('Hello')` |
 | `Semantics(header: true, child: Text('Title'))` | `role="heading"` | `getByRole('heading', { name: 'Title' })` |
 
-The identifier is not read by screen readers, so it is safe as a test id. Prefer roles and labels;
-add an identifier only when no accessible locator exists (as for `data-testid`).
+The identifier is not read by screen readers, so it is safe as a test id. Prefer roles and labels
+(`getByRole`, `getByLabel`); add an identifier only when no accessible locator exists, as for
+`data-testid`. `getByTestId` finds identifiers only because `flutterConfig()` (or your own `use`)
+sets `testIdAttribute`.
 
-### Role-mapping quirks
+**Role-mapping quirks**
 
 - **Buttons:** Material buttons (`ElevatedButton`, `TextButton`, `IconButton`) get
   `role="button"`. A `GestureDetector` or `InkWell` alone gets no button role: wrap it in
@@ -329,6 +329,95 @@ add an identifier only when no accessible locator exists (as for `data-testid`).
 - **Merged semantics:** a widget such as `ListTile` merges the labels of its children into one
   node, so the accessible name can be "Title Subtitle". Match it with a RegExp or `exact: false`.
 
+### 4. Waits
+
+`flutterReady` (an `AppReady`) waits for the `flutter-first-frame` window event, then turns on the
+semantics tree. `flutterReadyWith({ timeout })` sets the timeout of each wait. A timeout gives an
+error that tells which step failed.
+
+**The first-frame listener must be in place before navigation.** A fast first frame fires before
+`goto` returns. `flutterFixture()` adds the listener to the context with `addInitScript`, and
+`FlutterScreen.open()` adds it to the page. Elsewhere, call `installFlutterFirstFrameListener(page)`
+before the first `goto`. Without it, `flutterReady` fails at once with an error that says so; it
+does not wait for a timeout. Do not wait for `networkidle`: a Flutter app never settles. Wait for
+a locator or an `expect`.
+
+### 5. Screens and scrolling
+
+```ts
+// screens/list.screen.ts
+import { FlutterScreen } from 'playwright-e2e-kit/flutter'
+
+export class ListScreen extends FlutterScreen {
+  readonly path = '/#/list'
+  private readonly list = this.page.getByTestId('items-list')
+  private readonly closeButton = this.page.getByRole('button', { name: 'Close' })
+  private row(id: string) {
+    return this.page.getByTestId(`item-${id}`)
+  }
+
+  async openItem(id: string): Promise<void> {
+    await this.scrollUntilVisible(this.row(id), { within: this.list })
+    await this.row(id).click()
+  }
+
+  async close(): Promise<void> {
+    await this.closeButton.click()
+  }
+}
+```
+
+`FlutterScreen` extends `BaseScreen` (which does not change). `open()` / `reload()` wait with the
+page's app-ready hook, or with `flutterReady` when none is set. Locators stay `private`; the ESLint
+layer rules apply as for any screen.
+
+`scrollUntilVisible(locator, { within, maxSwipes, direction, settleTimeout })`: list items outside
+the viewport are not in the semantics tree, and `scrollIntoViewIfNeeded` cannot reach them. The
+helper moves the mouse over `within` (default: the viewport), turns the wheel by 80% of its size,
+and stops when the centre of `locator` is inside `within`. After `maxSwipes` (default 10) it
+throws. The raw `page.mouse` stays inside the kit, so screens do not need it. `FlutterScreen`
+has it as a protected method.
+
+### 6. Error guard and accessibility
+
+- **Error guard:** `flutterErrorAllowList` (used in the fixture above) allows only known noise:
+  CanvasKit and font fetches from gstatic, and service worker registration. Each entry has a
+  reason. It never hides a failure from the app's own origin.
+- **Accessibility:** Flutter node ids change between builds, so match an exclusion by attribute,
+  not by a full selector. `[flt-semantics-identifier="map"]` stays valid when the parent changes;
+  a generated id (`flt-sem-42`) needs `selectorPattern`. See "Accessibility".
+
+```ts
+// steps/a11y.steps.ts
+import type { Page } from '@playwright/test'
+import { A11ySteps, type A11yExclusion } from 'playwright-e2e-kit/a11y'
+
+const exclusions: A11yExclusion[] = [
+  {
+    rule: 'aria-allowed-role',
+    attribute: '[flt-semantics-identifier="map"]',
+    reason: 'The map view has a Flutter-generated role that axe rejects.',
+    issue: '#1',
+  },
+]
+
+export const makeA11y = (page: Page) => new A11ySteps(page, { exclusions })
+```
+
+### 7. Known limits
+
+- **Canvas-rendered text is not in the DOM.** Only widgets with semantics are visible to
+  Playwright. Text in a `CustomPaint`, an image, or a widget under `ExcludeSemantics` cannot be
+  found by `getByText`. Add a `Semantics(label: …)`, or check it with a screenshot.
+- **Platform views and iframes** (embedded web views, ads, payment forms) are separate documents.
+  Use `page.frameLocator(...)` in the screen; the Flutter tree shows only the host box.
+- **Maps** (a map SDK on a canvas or a platform view) expose no markers or tiles as nodes. Test
+  the app's own controls, give the map one identifier, and check map content in a separate test
+  with a stubbed data source.
+- **CanvasKit and fonts** load from `www.gstatic.com` at runtime, so an offline or blocked CI
+  network fails the first load. Self-host them in the Flutter build, or use
+  `flutterErrorAllowList` and accept the font fallback.
+
 ## Compose Multiplatform web (`playwright-e2e-kit/compose`)
 
 Kotlin Multiplatform (KMP) web builds come in two kinds:
@@ -342,48 +431,61 @@ Kotlin Multiplatform (KMP) web builds come in two kinds:
 
 Native iOS / Android targets of a KMP app are out of scope: Playwright drives only a browser.
 
+### Config, fixtures and screens
+
 ```ts
 // playwright.config.ts
 import { composeConfig } from 'playwright-e2e-kit/compose'
-export default composeConfig({ testDir: './e2e', use: { baseURL: 'http://localhost:8080' } })
 
-// fixtures
+export default composeConfig({ testDir: './e2e', use: { baseURL: 'http://localhost:8080' } })
+```
+
+```ts
+// fixtures/app.ts
 import { test as base } from '@playwright/test'
-import { errorGuardFixture } from 'playwright-e2e-kit'
+import { errorGuardFixture, type AppReady, type ErrorGuard } from 'playwright-e2e-kit'
 import { composeErrorAllowList, composeFixture } from 'playwright-e2e-kit/compose'
-export const test = base.extend({
+
+export const test = base.extend<{ appReady: AppReady | undefined; errorGuard: ErrorGuard }>({
   ...composeFixture(), // instead of appReadyFixture()
   errorGuard: errorGuardFixture({ allow: composeErrorAllowList }),
 })
+```
 
+```ts
 // screens/form.screen.ts
 import { ComposeScreen } from 'playwright-e2e-kit/compose'
+
 export class FormScreen extends ComposeScreen {
   readonly path = '/'
   private readonly email = this.page.getByTestId('email-field')
   private readonly submit = this.page.getByRole('button', { name: 'Submit' })
   private readonly list = this.page.getByTestId('items-list')
+  private item(n: number) {
+    return this.page.getByTestId(`item-${n}`)
+  }
 
   async sendEmail(value: string): Promise<void> {
     await this.typeText(this.email, value)
     await this.tap(this.submit)
   }
 
-  async showItem(n: number): Promise<void> {
-    await this.scrollUntilVisible(this.page.getByTestId(`item-${n}`), { within: this.list })
+  async openItem(n: number): Promise<void> {
+    await this.scrollUntilVisible(this.item(n), { within: this.list })
+    await this.tap(this.item(n))
   }
 }
 ```
 
 - **`composeConfig(config, options)`** is `defineE2EConfig()` plus `use.testIdAttribute: 'id'`
-  and the `appReady` option set to `composeReady` (or `options.appReady`). The app's `use` wins.
+  and `appReady: composeReady`. The app's `use` and `options` win.
 - **`composeReady`** (an `AppReady`) waits for the first node in `#cmp_a11y_root`, the
   accessibility tree that Compose builds next to its canvas after the first composition.
   `composeReadyWith({ timeout })` sets the timeout. Compose sends no "first frame" event, so
   nothing must be installed before navigation, and the tree needs no activation. A timeout error
   tells whether the root is missing (not a Compose app, or `isA11YEnabled = false`) or empty.
-- **`composeFixture()`** sets the `appReady` option to `composeReady`. The hook is wrapped
-  (`composeAppReadyOption`): Playwright calls a bare function in an option as a fixture.
+- **`composeFixture()`** sets the `appReady` option to `composeReady` (wrapped with
+  `appReadyOption`).
 - **`ComposeScreen`** extends `BaseScreen` (which does not change). It waits with the page's
   app-ready hook, or with `composeReady` when none is set. It gives the subclasses `tap()`,
   `typeText()` and `scrollUntilVisible()`. Locators stay `private`.
@@ -431,17 +533,31 @@ tag only when no accessible locator exists.
   `aria-roles` on the `<canvas>` (`role="generic"`), `aria-required-attr` on headings (no
   `aria-level`) and `aria-required-children` on lists (no `listitem`). The app cannot fix them;
   add one exclusion per rule and node (for example `rule: 'aria-roles'` with
-  `selectorPattern: /^canvas$/`) and give the upstream epic
-  CMP-9678 (JetBrains YouTrack) as the `issue`.
+  `selectorPattern: /^canvas$/`) and give the upstream epic CMP-9678 (JetBrains YouTrack) as the
+  `issue`.
 - **Turned off:** an app that sets `isA11YEnabled = false` in `ComposeViewport` has no tree.
   Then the kit cannot find composables.
 
-Values for the Compose Multiplatform web column of the framework matrix: app-ready hook
-`composeReady` with `composeConfig()` / `composeFixture()`; `testIdAttribute` `id` with
-`composeConfig()`; error-guard allow list `composeErrorAllowList`, opt-in; accessibility: axe on
-the hidden tree, exclusions for the Compose-generated violations; scrolling `scrollUntilVisible`,
-opt-in; entry point `playwright-e2e-kit/compose`. Kotlin/JS with Compose HTML uses the same values
-as React.
+## Framework matrix
+
+What an app gets with no extra code ("default") and what it turns on ("opt-in", with the import
+or option named in the cell).
+
+| Feature | React | Vue | Nuxt | Angular | Flutter web | Kotlin/JS + Compose HTML | Compose Multiplatform web (wasmJs, canvas) |
+|---|---|---|---|---|---| ---|---|
+| App-ready hook (`BaseScreen.open()`) | default: none (`goto` only); own `AppReady` or `domContentReady` opt-in | same as React | default: none; `nuxtReady` opt-in | default: none; `angularReady` opt-in (added in #5, planned for 0.2.0) | on with `flutterConfig()` / `flutterFixture()` (`flutterReady`); none otherwise | default: none, as React | on with `composeConfig()` / `composeFixture()` (`composeReady`); none otherwise |
+| `testIdAttribute` | `data-testid` | `data-testid` | `data-testid` | `data-testid` | `flt-semantics-identifier` with `flutterConfig()`; `data-testid` otherwise | `data-testid` | `id` (from `Modifier.testTag`) with `composeConfig()`; `data-testid` otherwise |
+| Error-guard allow list | default: empty (`errorGuardFixture({ allow })`) | same | same | same | `flutterErrorAllowList`, opt-in | default: empty | `composeErrorAllowList`, opt-in |
+| Accessibility (`A11ySteps`) | axe on the DOM; exclusions by `selector` | same | same | same | same engine; exclusions by `attribute` / `selectorPattern` on `flt-semantics` nodes; canvas content not audited | same as React (DOM) | same engine on the hidden `#cmp_a11y_root` tree; exclusions for the Compose-generated `aria-roles` / `aria-required-attr` / `aria-required-children` violations; canvas content not audited |
+| Scrolling | Playwright auto-scroll | same | same | same | `scrollUntilVisible` (virtualised lists, wheel based), opt-in | Playwright auto-scroll | `scrollUntilVisible` (lazy lists, wheel based), opt-in |
+| Entry point | `playwright-e2e-kit` | `playwright-e2e-kit` | `playwright-e2e-kit` | `playwright-e2e-kit` | `playwright-e2e-kit/flutter` | `playwright-e2e-kit` | `playwright-e2e-kit/compose` |
+
+Kotlin/JS with Compose HTML renders real DOM, so it behaves like React. Compose Multiplatform for
+web (wasmJs) draws on a canvas like Flutter; it uses the opt-in `playwright-e2e-kit/compose` preset. Native iOS and Android
+apps are out of scope: Playwright drives only a browser.
+
+React, Vue and Angular apps have no default wait. Pass your own `AppReady` or the ready-made hook
+as in "App-ready hook".
 
 ## Flakes
 
@@ -525,6 +641,17 @@ message or a tag message contains a term from the deny-list, or a URL whose host
 allow-list. The deny-list comes from the `NO_PRODUCT_REFS` environment variable (comma separated)
 and from the git-ignored file `.no-product-refs` (one term or `/regex/` per line). The list is never
 committed, so it cannot name a product either.
+
+## Release checklist
+
+The kit runs its own suite in a real Chromium against four fixture apps
+(`test/fixtures-apps/`: React, Vue, Angular, Flutter web), with `npm run test:e2e`
+(`E2E_APP=<app>` for one app; Flutter needs the `flutter` SDK). Before you push a `v*` tag:
+
+1. CI on the release commit is green: the `gate` job and **all four** `e2e` jobs (react, vue,
+   angular, flutter).
+2. `dist/` matches the sources (`npm run lint` checks it).
+3. A change that breaks a consumer has a new major version.
 
 ## License
 

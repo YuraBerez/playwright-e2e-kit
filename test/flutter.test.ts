@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from 'vitest'
 import type { BrowserContext, Locator, Page } from '@playwright/test'
 import { getAppReady, setAppReady } from '../src/app-ready.js'
 import { baseConfig } from '../src/config.js'
+import { resolveOption } from './option-helper.js'
 import {
   FLUTTER_FIRST_FRAME_FLAG,
   FLUTTER_TEST_ID_ATTRIBUTE,
@@ -148,7 +149,11 @@ describe('enableFlutterSemantics', () => {
 describe('flutterFixture', () => {
   it('defaults appReady to flutterReady and keeps the page override', async () => {
     const f = flutterFixture()
-    expect(f.appReady).toEqual([flutterReady, { option: true }])
+    expect(f.appReady[1]).toEqual({ option: true })
+    // Wrapped: a bare function default would be run by Playwright as the fixture function.
+    expect(typeof f.appReady[0]).toBe('function')
+    expect(f.appReady[0]).not.toBe(flutterReady)
+    expect(await resolveOption(f.appReady[0])).toBe(flutterReady)
     const p = asPage({})
     await f.page({ page: p, appReady: flutterReady }, async () => {
       expect(getAppReady(p)).toBe(flutterReady)
@@ -172,18 +177,18 @@ describe('flutterFixture', () => {
 })
 
 describe('flutterConfig', () => {
-  it('sets the Flutter test id attribute and flutterReady', () => {
+  it('sets the Flutter test id attribute and flutterReady', async () => {
     const use = flutterConfig({ use: { baseURL: 'http://localhost:1' } }).use as Record<string, unknown>
     expect(use.testIdAttribute).toBe(FLUTTER_TEST_ID_ATTRIBUTE)
-    expect(use.appReady).toBe(flutterReady)
+    expect(await resolveOption(use.appReady)).toBe(flutterReady)
     expect(use.baseURL).toBe('http://localhost:1')
   })
 
-  it('lets the app override both', () => {
+  it('lets the app override both', async () => {
     const hook = async () => undefined
     const use = flutterConfig({ use: { testIdAttribute: 'data-qa' } }, { appReady: hook }).use as Record<string, unknown>
     expect(use.testIdAttribute).toBe('data-qa')
-    expect(use.appReady).toBe(hook)
+    expect(await resolveOption(use.appReady)).toBe(hook)
   })
 
   it('does not change the kit defaults for other apps', () => {

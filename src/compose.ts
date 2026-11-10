@@ -1,7 +1,7 @@
 // Entry point `playwright-e2e-kit/compose` (Compose Multiplatform web, wasmJs). Only re-exports:
 // the code lives in compose-*.ts. No other entry point imports this file (test/boundaries.test.ts).
 export { COMPOSE_TEST_ID_ATTRIBUTE, composeConfig } from './compose-config.js'
-export { composeAppReadyOption, composeFixture, type ComposeAppReadyOption } from './compose-fixture.js'
+export { composeFixture } from './compose-fixture.js'
 export { COMPOSE_A11Y_ROOT, composeReady, composeReadyWith, type ComposeReadyOptions } from './compose-ready.js'
 export {
   COMPOSE_BACKING_FIELD_CLASS,
