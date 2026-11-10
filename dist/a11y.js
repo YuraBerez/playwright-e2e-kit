@@ -1,14 +1,24 @@
 import AxeBuilder from '@axe-core/playwright';
-import { expect } from '@playwright/test';
+import { expect, test } from '@playwright/test';
 import { BaseSteps } from './steps.js';
 /** WCAG 2.0 and 2.1, levels A and AA. */
 export const WCAG_A_AA_TAGS = ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa'];
+/** True when the exclusion's matcher selects this target part. */
+function targetMatches(x, target) {
+    if (x.selector !== undefined)
+        return target === x.selector;
+    if (x.attribute !== undefined)
+        return target.includes(x.attribute);
+    if (x.selectorPattern !== undefined)
+        return new RegExp(x.selectorPattern.source, x.selectorPattern.flags.replace(/[gy]/g, '')).test(target);
+    return false;
+}
 /** Removes excluded nodes, then the violations that have no node left. */
 export function withoutExclusions(violations, exclusions) {
     return violations
         .map((v) => ({
         ...v,
-        nodes: v.nodes.filter((n) => !exclusions.some((x) => x.rule === v.id && n.target.some((t) => String(t) === x.selector))),
+        nodes: v.nodes.filter((n) => !exclusions.some((x) => x.rule === v.id && n.target.some((t) => targetMatches(x, String(t))))),
     }))
         .filter((v) => v.nodes.length > 0);
 }
@@ -34,10 +44,18 @@ export class A11ySteps extends BaseSteps {
         this.exclusions = options.exclusions ?? [];
         this.tags = options.tags ?? WCAG_A_AA_TAGS;
     }
-    /** Fails with every violation (rule, impact, help URL, offending nodes) except the excluded ones. */
+    /** Fails with every violation (rule, impact, help URL, offending nodes) except the excluded ones,
+     * and attaches the full axe report as `axe-report.json`. */
     async expectNoViolations() {
         const { violations } = await new AxeBuilder({ page: this.page }).withTags([...this.tags]).analyze();
         const remaining = withoutExclusions(violations, this.exclusions);
+        if (remaining.length > 0) {
+            // The full report (all violations, before exclusions) for triage: the message shows the remaining ones only.
+            await test.info().attach('axe-report.json', {
+                body: JSON.stringify({ url: this.page.url(), tags: this.tags, violations, remaining }, null, 2),
+                contentType: 'application/json',
+            });
+        }
         expect(remaining.length, `${this.page.url()} has ${remaining.length} accessibility violation(s):\n${formatViolations(remaining)}`).toBe(0);
     }
 }

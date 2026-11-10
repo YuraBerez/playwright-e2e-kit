@@ -11,3 +11,4 @@ export {
   type FlutterReadyOptions,
 } from './flutter-ready.js'
 export { FlutterScreen, scrollUntilVisible, type ScrollUntilVisibleOptions } from './flutter-screen.js'
+export { flutterErrorAllowList } from './flutter-allow-list.js'
