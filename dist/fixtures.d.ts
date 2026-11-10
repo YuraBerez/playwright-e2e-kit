@@ -1,4 +1,5 @@
-import type { BrowserContext } from '@playwright/test';
+import type { BrowserContext, Page } from '@playwright/test';
+import { type AppReady } from './app-ready.js';
 import { CleanupRegistry, type ResourceFactory } from './data.js';
 import { ErrorGuard, type ErrorGuardOptions } from './error-guard.js';
 /**
@@ -30,4 +31,18 @@ export declare function errorGuardFixture(options?: ErrorGuardOptions): [({ cont
 }, use: Use<ErrorGuard>) => Promise<void>, {
     auto: true;
 }];
+/**
+ * Fixtures for the app-ready hook: the `appReady` option (set it with `test.use({ appReady })` or
+ * `use: { appReady }` in the config) and a `page` override that registers it for `BaseScreen`.
+ * Spread into `test.extend({ ...appReadyFixture() })`.
+ */
+export declare function appReadyFixture(): {
+    appReady: [AppReady | undefined, {
+        option: true;
+    }];
+    page: ({ page, appReady }: {
+        page: Page;
+        appReady: AppReady | undefined;
+    }, use: Use<Page>) => Promise<void>;
+};
 export {};

@@ -15,13 +15,16 @@ export declare abstract class BaseComponent {
  * `open()` and `verify…()` checks about that screen only.
  *
  * `open()` only navigates: a route guard may redirect, so callers check what actually opened with
- * `verifyShown()` / `verifyUrl()`.
+ * `verifyShown()` / `verifyUrl()`. After `open()` and `reload()` it awaits the app-ready hook, if
+ * one is set (see `appReadyFixture`). With no hook it does nothing more.
  */
 export declare abstract class BaseScreen extends BaseComponent {
     /** Path of the screen, relative to the configured `baseURL`. */
     abstract readonly path: string;
     open(): Promise<void>;
     reload(): Promise<void>;
+    /** Override for one screen that needs its own readiness. The default runs the page's hook. */
+    protected waitReady(): Promise<void>;
     /** The browser is at this screen's URL (a guard did not redirect elsewhere). */
     verifyUrl(): Promise<void>;
     /** Override for parametrised routes. The default matches `path` anywhere in the URL. */

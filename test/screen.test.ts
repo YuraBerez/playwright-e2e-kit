@@ -5,6 +5,7 @@ const pwExpect = vi.fn(() => ({ toHaveURL }))
 vi.mock('@playwright/test', () => ({ expect: (...a: unknown[]) => (pwExpect as (...x: unknown[]) => unknown)(...a) }))
 
 const { BaseComponent, BaseScreen, escapeRegExp } = await import('../src/screen.js')
+const { setAppReady } = await import('../src/app-ready.js')
 type Page = ConstructorParameters<typeof BaseComponent>[0]
 
 class SearchScreen extends BaseScreen {
@@ -60,5 +61,40 @@ describe('BaseScreen', () => {
   it('components keep the page', () => {
     const page = fakePage() as unknown as Page
     expect(new Toast(page).boundPage).toBe(page)
+  })
+})
+
+describe('BaseScreen app-ready hook', () => {
+  it('with no hook, open() and reload() only call goto and reload', async () => {
+    const page = fakePage()
+    await new SearchScreen(page as unknown as Page).open()
+    await new SearchScreen(page as unknown as Page).reload()
+    expect(Object.keys(page)).toEqual(['goto', 'reload'])
+    expect(page.goto).toHaveBeenCalledOnce()
+    expect(page.reload).toHaveBeenCalledOnce()
+  })
+
+  it('awaits the registered hook after goto and after reload', async () => {
+    const page = fakePage()
+    const order: string[] = []
+    page.goto.mockImplementation(async () => void order.push('goto') as never)
+    page.reload.mockImplementation(async () => void order.push('reload') as never)
+    setAppReady(page as unknown as Page, async () => void order.push('ready'))
+    const screen = new SearchScreen(page as unknown as Page)
+    await screen.open()
+    await screen.reload()
+    expect(order).toEqual(['goto', 'ready', 'reload', 'ready'])
+  })
+
+  it('a subclass can override waitReady()', async () => {
+    class Custom extends SearchScreen {
+      ready = vi.fn()
+      protected override async waitReady(): Promise<void> {
+        this.ready()
+      }
+    }
+    const screen = new Custom(fakePage() as unknown as Page)
+    await screen.open()
+    expect(screen.ready).toHaveBeenCalledOnce()
   })
 })

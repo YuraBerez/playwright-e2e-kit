@@ -13,5 +13,6 @@ export {
   type ErrorKind,
 } from './error-guard.js'
 export { CleanupRegistry, formatCleanupFailures, type CleanupFailure, type ResourceFactory } from './data.js'
-export { cleanupFixture, errorGuardFixture, resourceFixture, type CleanupFixtureOptions } from './fixtures.js'
+export { appReadyFixture, cleanupFixture, errorGuardFixture, resourceFixture, type CleanupFixtureOptions } from './fixtures.js'
 export { DEFAULT_LOCALE, DEFAULT_TIMEZONE, deterministicUse, type Determinism } from './determinism.js'
+export { domContentReady, getAppReady, nuxtReady, setAppReady, type AppReady } from './app-ready.js'
