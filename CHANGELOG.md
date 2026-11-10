@@ -5,6 +5,8 @@ Keep a Changelog, and the project follows Semantic Versioning. A change that bre
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-11-10
+
 Additive: apps that do not use the new helpers see no change.
 
 ### Documentation

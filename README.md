@@ -12,7 +12,7 @@ data-layer implementation, its targets and its credentials.
 The kit is a git dependency. There is no registry and no publish step. Pin an exact tag:
 
 ```bash
-npm install --save-dev "github:YuraBerez/playwright-e2e-kit#v0.2.0"
+npm install --save-dev "github:YuraBerez/playwright-e2e-kit#v0.3.0"
 ```
 
 The built output (`dist/`) is committed, so the install does not build anything and works with
@@ -31,7 +31,7 @@ version.
 | `playwright-e2e-kit/a11y` | `A11ySteps`, `A11yExclusion`, `withoutExclusions`, `formatViolations` |
 | `playwright-e2e-kit/config` | `defineE2EConfig`, `baseConfig`, `quarantineGrepInvert` |
 | `playwright-e2e-kit/eslint` | `e2eLayerRules()` (flat config) |
-| `playwright-e2e-kit/flutter` | Flutter web only (opt-in; the main entry never imports it): `flutterConfig`, `flutterFixture`, `flutterReady`, `enableFlutterSemantics`, `installFlutterFirstFrameListener`, `FlutterScreen`, `scrollUntilVisible`, `flutterErrorAllowList` |
+| `playwright-e2e-kit/flutter` | Flutter web only (opt-in; the main entry never imports it): `flutterConfig`, `flutterFixture`, `flutterReady`, `enableFlutterSemantics`, `installFlutterFirstFrameListener`, `FlutterScreen`, `scrollUntilVisible`, `flutterType`, `flutterErrorAllowList` |
 | `playwright-e2e-kit/compose` | Compose Multiplatform web (wasmJs) only (opt-in; no other entry imports it): `composeConfig`, `composeFixture`, `composeReady`, `composeTap`, `composeType`, `composeClear`, `composeReadText`, `composeScrollUntilVisible`, `ComposeScreen`, `scrollUntilVisible`, `composeErrorAllowList`, `diagnoseCompose` |
 
 ## Minimal example
