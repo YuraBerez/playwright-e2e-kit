@@ -5,8 +5,9 @@ Keep a Changelog, and the project follows Semantic Versioning. A change that bre
 
 ## [Unreleased]
 
-Planned release: **0.2.0** (minor; every change is additive, so React, Vue, Nuxt and Angular apps
-see no change). All items below go into it.
+## [0.2.0] - 2026-11-10
+
+Minor release: every change is additive, so React, Vue, Nuxt and Angular apps see no change.
 
 ### Added
 
@@ -52,12 +53,6 @@ see no change). All items below go into it.
   each part of it; the joined form matches as before (#11).
 - `check:no-product-refs` skips the URL check for the generated Gradle wrapper files and
   `yarn.lock` files, as for the other lockfiles; they still get the deny-list check (#11).
-
-### Release plan
-
-After the real-browser e2e CI (#5) is green on `main`: bump `version` in `package.json` to
-`0.2.0`, rebuild `dist/`, move the items above under `## [0.2.0]`, and push the tag `v0.2.0` (see
-the Release checklist in the README). Consumers then move their pin to `#v0.2.0`.
 
 ## [0.1.0]
 
