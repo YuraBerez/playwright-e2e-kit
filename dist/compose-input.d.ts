@@ -15,6 +15,10 @@ export interface ComposeTypeOptions extends ComposeTapOptions {
  * waits until the node is visible, then clicks the centre of its box with `force: true`: the real
  * pointer events go to the canvas, and Compose hit-tests them as for a user (a disabled button
  * stays disabled, a dialog on top gets the click).
+ *
+ * Compose re-syncs the nodes after a recomposition, so a node can be hidden or replaced for a
+ * moment between the wait and the click. A forced click does not wait again, so the click is
+ * tried again (up to 5 times, inside `timeout`) when it fails with "not visible" or "not attached".
  */
 export declare function composeTap(locator: Locator, options?: ComposeTapOptions): Promise<void>;
 /**

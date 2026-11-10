@@ -92,8 +92,38 @@ function inputTarget(opts: { focused?: boolean } = {}) {
 describe('composeTap', () => {
   it('waits until the node is visible, then clicks through the canvas with force', async () => {
     const t = inputTarget()
-    await composeTap(t.locator, { timeout: 99 })
-    expect(t.calls).toEqual(['wait visible 99', 'click force=true 99'])
+    await composeTap(t.locator)
+    expect(t.calls).toEqual(['wait visible undefined', 'click force=true undefined'])
+  })
+
+  it('passes what is left of the timeout to each wait', async () => {
+    const t = inputTarget()
+    await composeTap(t.locator, { timeout: 10_000 })
+    const [wait, click] = t.calls.map((c) => Number(c.split(' ').at(-1)))
+    expect(wait).toBeGreaterThan(9_000)
+    expect(click).toBeLessThanOrEqual(10_000)
+  })
+
+  it('tries again when the node was hidden or replaced before the click', async () => {
+    const t = inputTarget()
+    const click = (t.locator as unknown as { click: ReturnType<typeof vi.fn> }).click
+    click.mockRejectedValueOnce(new Error('locator.click: Element is not visible'))
+    click.mockRejectedValueOnce(new Error('locator.click: Element is not attached to the DOM'))
+    await composeTap(t.locator)
+    expect(click).toHaveBeenCalledTimes(3)
+  })
+
+  it('rethrows other errors at once and gives up after 5 attempts', async () => {
+    const t = inputTarget()
+    const click = (t.locator as unknown as { click: ReturnType<typeof vi.fn> }).click
+    click.mockRejectedValueOnce(new Error('Timeout 30000ms exceeded.'))
+    await expect(composeTap(t.locator)).rejects.toThrow('Timeout')
+    expect(click).toHaveBeenCalledTimes(1)
+
+    click.mockClear()
+    click.mockRejectedValue(new Error('Element is not visible'))
+    await expect(composeTap(t.locator)).rejects.toThrow('not visible')
+    expect(click).toHaveBeenCalledTimes(5)
   })
 })
 
@@ -113,8 +143,13 @@ describe('composeType', () => {
 
   it('keeps the current text with clear: false', async () => {
     const t = inputTarget()
-    await composeType(t.locator, '!', { clear: false, timeout: 5 })
-    expect(t.calls).toEqual(['wait visible 5', 'click force=true 5', `focus ${COMPOSE_BACKING_FIELD_CLASS} 5`, 'type !'])
+    await composeType(t.locator, '!', { clear: false })
+    expect(t.calls).toEqual([
+      'wait visible undefined',
+      'click force=true undefined',
+      `focus ${COMPOSE_BACKING_FIELD_CLASS} undefined`,
+      'type !',
+    ])
   })
 
   it('does not type when the field never takes the focus', async () => {
