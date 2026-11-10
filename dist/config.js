@@ -34,6 +34,7 @@ export function baseConfig(options = {}) {
         use: {
             trace: 'retain-on-failure',
             ...deterministicUse(options.determinism),
+            ...(options.appReady ? { appReady: options.appReady } : {}),
         },
     };
 }

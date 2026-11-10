@@ -25,7 +25,7 @@ version.
 
 | Import | Contents |
 |---|---|
-| `playwright-e2e-kit` | `BaseScreen`, `BaseComponent`, `BaseSteps`, `boxSteps`, `ErrorGuard`, `errorGuardFixture`, `ResourceFactory`, `resourceFixture`, `CleanupRegistry`, `cleanupFixture`, `deterministicUse` |
+| `playwright-e2e-kit` | `BaseScreen`, `BaseComponent`, `BaseSteps`, `boxSteps`, `ErrorGuard`, `errorGuardFixture`, `ResourceFactory`, `resourceFixture`, `CleanupRegistry`, `cleanupFixture`, `deterministicUse`, `appReadyFixture`, `AppReady`, `domContentReady`, `nuxtReady` |
 | `playwright-e2e-kit/a11y` | `A11ySteps`, `A11yExclusion`, `withoutExclusions`, `formatViolations` |
 | `playwright-e2e-kit/flutter` | `flutterErrorAllowList` (opt-in Flutter web presets; the main entry never imports it) |
 | `playwright-e2e-kit/config` | `defineE2EConfig`, `baseConfig`, `quarantineGrepInvert` |
@@ -226,6 +226,26 @@ export default defineE2EConfig({
 and ignores `__tests__/`; fully parallel; `test.only` fails in CI; trace kept on failure; timezone
 `UTC` and locale `en-US` pinned. Top-level keys of the app config replace the defaults; `use` is
 merged key by key.
+
+## App-ready hook
+
+`BaseScreen.open()` returns after `page.goto`. A SPA or canvas app may not take input then. Set one
+optional hook, `AppReady = (page: Page) => Promise<void>`. `open()` and `reload()` await it. With no
+hook they do only `goto` / `reload`, so an app that sets nothing sees no change.
+
+```ts
+// fixtures
+import { test as base } from '@playwright/test'
+import { appReadyFixture } from 'playwright-e2e-kit'
+export const test = base.extend({ ...appReadyFixture() })
+
+// playwright.config.ts
+export default defineE2EConfig({ /* … */ }, { appReady: nuxtReady }) // or test.use({ appReady })
+```
+
+Ready-made hooks (none is on by default): `domContentReady`, `nuxtReady` (Nuxt hydrated). A screen
+can override `protected waitReady()`. A preset (for example a Flutter one) sets `appReady` the same
+way, through the config `use`.
 
 ## Flakes
 
