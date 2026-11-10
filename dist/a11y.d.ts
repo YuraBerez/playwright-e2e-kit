@@ -2,19 +2,38 @@ import { type Page } from '@playwright/test';
 import { BaseSteps } from './steps.js';
 /** WCAG 2.0 and 2.1, levels A and AA. */
 export declare const WCAG_A_AA_TAGS: readonly string[];
-/**
- * A documented, tracked accessibility exclusion. No blanket disabling: each entry names ONE axe
- * rule on ONE CSS selector, why it is acceptable for now, and the follow-up issue that removes it.
- */
-export interface A11yExclusion {
+/** Fields every exclusion shares. */
+interface A11yExclusionBase {
     /** axe rule id, e.g. `color-contrast`. */
     rule: string;
-    /** CSS selector of the offending element(s), as axe reports it in `node.target`. */
-    selector: string;
     reason: string;
     /** Follow-up issue that removes the entry. */
     issue: string;
 }
+/**
+ * A documented, tracked accessibility exclusion. No blanket disabling: each entry names ONE axe
+ * rule on the elements ONE matcher selects, why it is acceptable for now, and the follow-up issue
+ * that removes it. Give exactly one matcher: `selector`, `attribute` or `selectorPattern`.
+ */
+export type A11yExclusion = A11yExclusionBase & ({
+    /** CSS selector of the offending element(s), compared as a whole with `node.target`. */
+    selector: string;
+    attribute?: never;
+    selectorPattern?: never;
+} | {
+    /**
+     * Attribute selector, e.g. `[flt-semantics-identifier="map"]`. Matches every node whose
+     * target contains it, so it survives a changed tag, parent or generated id.
+     */
+    attribute: string;
+    selector?: never;
+    selectorPattern?: never;
+} | {
+    /** Pattern tested against each part of `node.target`, e.g. `/^#flt-sem-\d+$/`. */
+    selectorPattern: RegExp;
+    selector?: never;
+    attribute?: never;
+});
 /** The part of an axe violation that the audit reads. */
 export interface A11yViolation {
     id: string;
@@ -47,6 +66,8 @@ export declare class A11ySteps extends BaseSteps {
     private readonly exclusions;
     private readonly tags;
     constructor(page: Page, options?: A11yOptions);
-    /** Fails with every violation (rule, impact, help URL, offending nodes) except the excluded ones. */
+    /** Fails with every violation (rule, impact, help URL, offending nodes) except the excluded ones,
+     * and attaches the full axe report as `axe-report.json`. */
     expectNoViolations(): Promise<void>;
 }
+export {};
