@@ -20,6 +20,21 @@ Additive: only apps that import `playwright-e2e-kit/compose` see a change.
   node ids (test tags), nodes without an accessible name, `pointer-events`, and hints. A
   `composeReady` timeout adds its summary to the error and attaches it as
   `compose-diagnosis.json`. README "Troubleshooting" table (#22).
+- `composeScrollUntilVisible(locator, { within, axis, step, maxSteps, mode, settleTimeout })` in
+  `playwright-e2e-kit/compose`, also behind `ComposeScreen.scrollUntilVisible()`: `y` or `x` axis
+  (`LazyColumn`, `LazyRow`, nested lists), a negative `step` scrolls back, `mode: 'drag'` drags a
+  touch pointer for apps that ignore the wheel, and it stops with a clear error when the list
+  does not move any more (its end). The old `maxSwipes` / `direction` options still work. The
+  shared `scrollUntilVisible` export of `/compose` and `/flutter` does not change (#19).
+- Text input in `playwright-e2e-kit/compose`: `composeType` gets `expected` (waits until a masked
+  field shows the formatted value), `submit` (Enter after the text, for an IME action) and
+  `password` (no read-back, no value in errors; set on its own for `KeyboardType.Password`); a
+  newline in a single-line field and `submit` on a multiline field throw. New `composeClear`
+  (with `expected` for a mask template) and `composeReadText` (lines joined with `\n`), and
+  `ComposeScreen.clearText()` / `readText()` (#20).
+- The Compose fixture app gets `/lists` (a 200-item `LazyColumn`, a `LazyRow`, a `LazyColumn` of
+  `LazyRow`s) and `/fields` (masked phone, password, multiline and search fields). The Compose
+  e2e projects run in Chromium, Firefox and WebKit, locally and in CI (#19, #20).
 
 ## [0.2.0] - 2026-11-10
 
