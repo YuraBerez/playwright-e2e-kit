@@ -4,3 +4,7 @@ coverage/
 # Local deny-list for check:no-product-refs (one term or /regex/ per line). Never commit it.
 .no-product-refs
 .DS_Store
+# e2e self-tests: reports and fixture-app build output
+test-results/
+playwright-report/
+test/fixtures-apps/*/dist/

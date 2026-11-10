@@ -23,7 +23,10 @@ export type A11yExclusion = A11yExclusionBase & ({
 } | {
     /**
      * Attribute selector, e.g. `[flt-semantics-identifier="map"]`. Matches every node whose
-     * target contains it, so it survives a changed tag, parent or generated id.
+     * target contains it, or whose element (axe `node.html`) has that attribute, so it
+     * survives a changed tag, parent or generated id. axe targets an element by its `id`
+     * when it has one (every Flutter semantics node has), so the element check is the one
+     * that matches there.
      */
     attribute: string;
     selector?: never;
@@ -34,6 +37,11 @@ export type A11yExclusion = A11yExclusionBase & ({
     selector?: never;
     attribute?: never;
 });
+/**
+ * True when the element's opening tag (axe `node.html`) has the attribute of an attribute
+ * selector: `[name]` or `[name="value"]` (single, double or no quotes).
+ */
+export declare function htmlHasAttribute(html: string | undefined, attribute: string): boolean;
 /** The part of an axe violation that the audit reads. */
 export interface A11yViolation {
     id: string;
@@ -42,6 +50,7 @@ export interface A11yViolation {
     helpUrl: string;
     nodes: {
         target: readonly unknown[];
+        html?: string;
         failureSummary?: string;
     }[];
 }

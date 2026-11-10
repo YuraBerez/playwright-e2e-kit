@@ -30,7 +30,10 @@ export type A11yExclusion = A11yExclusionBase &
     | {
         /**
          * Attribute selector, e.g. `[flt-semantics-identifier="map"]`. Matches every node whose
-         * target contains it, so it survives a changed tag, parent or generated id.
+         * target contains it, or whose element (axe `node.html`) has that attribute, so it
+         * survives a changed tag, parent or generated id. axe targets an element by its `id`
+         * when it has one (every Flutter semantics node has), so the element check is the one
+         * that matches there.
          */
         attribute: string
         selector?: never
@@ -52,13 +55,34 @@ function targetMatches(x: A11yExclusion, target: string): boolean {
   return false
 }
 
+/**
+ * True when the element's opening tag (axe `node.html`) has the attribute of an attribute
+ * selector: `[name]` or `[name="value"]` (single, double or no quotes).
+ */
+export function htmlHasAttribute(html: string | undefined, attribute: string): boolean {
+  const m = /^\[\s*([^\s~|^$*=\]]+)\s*(?:=\s*(?:"([^"]*)"|'([^']*)'|([^\]\s]*)))?\s*\]$/.exec(attribute)
+  if (!html || !m) return false
+  const name = m[1]!.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+  const tag = /^<[^>]*>/.exec(html)?.[0] ?? html
+  const value = m[2] ?? m[3] ?? m[4]
+  if (value === undefined) return new RegExp(`\\s${name}(\\s|=|/?>)`).test(tag)
+  const v = value.replace(/&/g, '&amp;').replace(/"/g, '&quot;')
+  return tag.includes(` ${m[1]}="${v}"`)
+}
+
+/** True when the exclusion selects the node, through one of its target parts or its element. */
+function nodeMatches(x: A11yExclusion, node: A11yViolation['nodes'][number]): boolean {
+  if (node.target.some((t) => targetMatches(x, String(t)))) return true
+  return x.attribute !== undefined && htmlHasAttribute(node.html, x.attribute)
+}
+
 /** The part of an axe violation that the audit reads. */
 export interface A11yViolation {
   id: string
   impact?: string | null
   help: string
   helpUrl: string
-  nodes: { target: readonly unknown[]; failureSummary?: string }[]
+  nodes: { target: readonly unknown[]; html?: string; failureSummary?: string }[]
 }
 
 /** Removes excluded nodes, then the violations that have no node left. */
@@ -69,7 +93,7 @@ export function withoutExclusions<V extends A11yViolation>(
   return violations
     .map((v) => ({
       ...v,
-      nodes: v.nodes.filter((n) => !exclusions.some((x) => x.rule === v.id && n.target.some((t) => targetMatches(x, String(t))))),
+      nodes: v.nodes.filter((n) => !exclusions.some((x) => x.rule === v.id && nodeMatches(x, n))),
     }))
     .filter((v) => v.nodes.length > 0)
 }

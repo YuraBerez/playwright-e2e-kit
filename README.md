@@ -25,7 +25,7 @@ version.
 
 | Import | Contents |
 |---|---|
-| `playwright-e2e-kit` | `BaseScreen`, `BaseComponent`, `BaseSteps`, `boxSteps`, `ErrorGuard`, `errorGuardFixture`, `ResourceFactory`, `resourceFixture`, `CleanupRegistry`, `cleanupFixture`, `deterministicUse`, `appReadyFixture`, `AppReady`, `domContentReady`, `nuxtReady` |
+| `playwright-e2e-kit` | `BaseScreen`, `BaseComponent`, `BaseSteps`, `boxSteps`, `ErrorGuard`, `errorGuardFixture`, `ResourceFactory`, `resourceFixture`, `CleanupRegistry`, `cleanupFixture`, `deterministicUse`, `appReadyFixture`, `AppReady`, `appReadyOption`, `domContentReady`, `nuxtReady`, `angularReady` |
 | `playwright-e2e-kit/a11y` | `A11ySteps`, `A11yExclusion`, `withoutExclusions`, `formatViolations` |
 | `playwright-e2e-kit/config` | `defineE2EConfig`, `baseConfig`, `quarantineGrepInvert` |
 | `playwright-e2e-kit/eslint` | `e2eLayerRules()` (flat config) |
@@ -240,10 +240,13 @@ import { appReadyFixture } from 'playwright-e2e-kit'
 export const test = base.extend({ ...appReadyFixture() })
 
 // playwright.config.ts
-export default defineE2EConfig({ /* … */ }, { appReady: nuxtReady }) // or test.use({ appReady })
+export default defineE2EConfig({ /* … */ }, { appReady: nuxtReady }) // or test.use({ appReady: appReadyOption(nuxtReady) })
 ```
 
-Ready-made hooks (none is on by default): `domContentReady`, `nuxtReady` (Nuxt hydrated). A screen
+Ready-made hooks (none is on by default): `domContentReady`, `nuxtReady` (Nuxt hydrated),
+`angularReady` (Angular bootstrapped; every testability stable, or the `ng-version` root when the
+app is zoneless). Playwright calls a bare function in `test.use()` as a fixture, so wrap a hook
+there with `appReadyOption(hook)`; `defineE2EConfig` and `flutterConfig` wrap it for you. A screen
 can override `protected waitReady()`. A preset (for example a Flutter one) sets `appReady` the same
 way, through the config `use`.
 
@@ -410,6 +413,17 @@ message or a tag message contains a term from the deny-list, or a URL whose host
 allow-list. The deny-list comes from the `NO_PRODUCT_REFS` environment variable (comma separated)
 and from the git-ignored file `.no-product-refs` (one term or `/regex/` per line). The list is never
 committed, so it cannot name a product either.
+
+## Release checklist
+
+The kit runs its own suite in a real Chromium against four fixture apps
+(`test/fixtures-apps/`: React, Vue, Angular, Flutter web), with `npm run test:e2e`
+(`E2E_APP=<app>` for one app; Flutter needs the `flutter` SDK). Before you push a `v*` tag:
+
+1. CI on the release commit is green: the `gate` job and **all four** `e2e` jobs (react, vue,
+   angular, flutter).
+2. `dist/` matches the sources (`npm run lint` checks it).
+3. A change that breaks a consumer has a new major version.
 
 ## License
 

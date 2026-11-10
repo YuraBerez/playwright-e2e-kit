@@ -1,0 +1,16 @@
+{
+  "name": "kit-fixture-vue",
+  "private": true,
+  "type": "module",
+  "description": "Minimal Vue app for the playwright-e2e-kit real-browser self-tests. Not published.",
+  "scripts": {
+    "build": "vite build"
+  },
+  "dependencies": {
+    "vue": "3.5.45"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-vue": "6.0.10",
+    "vite": "8.3.7"
+  }
+}
