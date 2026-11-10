@@ -9,6 +9,13 @@ Additive: only apps that import `playwright-e2e-kit/compose` see a change.
 
 ### Added
 
+- Init scripts of the kit (CSP violation listener, Flutter first-frame listener) are wrapped in
+  `try/catch`, so they cannot throw in `about:blank` or sandboxed frames. A real-browser test
+  covers it. README: how the error guard and the axe step treat third-party iframes, with
+  examples to exclude a frame (#28).
+- `e2eLayerRules({ unusedVars })` (opt-in): sets the named unused-variable rule to `error` with
+  `argsIgnorePattern: '^_'` for files under the root, so `{ browserName: _browserName }` passes.
+  Also exports `UNDERSCORE_ARGS_OPTIONS` (#30).
 - Reusable workflow `.github/workflows/compose-e2e.yml` (`workflow_call`) for Compose
   Multiplatform web e2e tests: JDK 21 and Gradle cache, `wasmJsBrowserDistribution` with a
   separate Gradle root (`gradle-dir`) and web module (`app-dir`), a static server with a base path
