@@ -1,5 +1,5 @@
 import type { BrowserContext } from '@playwright/test'
-import type { AppReady } from './app-ready.js'
+import { appReadyOption, type AppReadyOption } from './app-ready.js'
 import { appReadyFixture } from './fixtures.js'
 import { flutterReady, installFlutterFirstFrameListener } from './flutter-ready.js'
 
@@ -13,7 +13,8 @@ type Use<T> = (value: T) => Promise<void>
 export function flutterFixture() {
   return {
     ...appReadyFixture(),
-    appReady: [flutterReady, { option: true }] as [AppReady | undefined, { option: true }],
+    // Wrapped: Playwright would call a bare `flutterReady` as the fixture function.
+    appReady: [appReadyOption(flutterReady), { option: true }] as [undefined | AppReadyOption, { option: true }],
     context: async ({ context }: { context: BrowserContext }, use: Use<BrowserContext>): Promise<void> => {
       await installFlutterFirstFrameListener(context)
       await use(context)

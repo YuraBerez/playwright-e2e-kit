@@ -2,12 +2,15 @@ import js from '@eslint/js'
 import tseslint from 'typescript-eslint'
 
 export default tseslint.config(
-  { ignores: ['dist/**', 'coverage/**', 'node_modules/**'] },
+  {
+    // Fixture apps have their own dependencies and build output; the e2e run leaves reports.
+    ignores: ['dist/**', 'coverage/**', '**/node_modules/**', 'test/fixtures-apps/**', '**/test-results/**', '**/playwright-report/**'],
+  },
   js.configs.recommended,
   ...tseslint.configs.recommended,
   {
-    files: ['**/*.mjs', 'scripts/**'],
-    languageOptions: { globals: { process: 'readonly', console: 'readonly' } },
+    files: ['**/*.mjs', 'scripts/**', 'e2e/**'],
+    languageOptions: { globals: { process: 'readonly', console: 'readonly', URL: 'readonly' } },
   },
   {
     files: ['src/**/*.ts'],

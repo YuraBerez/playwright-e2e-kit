@@ -1,0 +1,14 @@
+name: kit_fixture
+description: "Minimal Flutter web app for the playwright-e2e-kit real-browser self-tests."
+publish_to: 'none'
+version: 0.1.0+1
+
+environment:
+  sdk: ^3.13.7
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+flutter:
+  uses-material-design: true

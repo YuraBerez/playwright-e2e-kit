@@ -1,0 +1,22 @@
+{
+  "name": "kit-fixture-angular",
+  "private": true,
+  "description": "Minimal Angular (standalone, zoneless) app for the playwright-e2e-kit real-browser self-tests. Not published.",
+  "scripts": {
+    "build": "ng build"
+  },
+  "dependencies": {
+    "@angular/common": "22.2.5",
+    "@angular/compiler": "22.2.5",
+    "@angular/core": "22.2.5",
+    "@angular/platform-browser": "22.2.5",
+    "rxjs": "7.8.2",
+    "tslib": "2.8.1"
+  },
+  "devDependencies": {
+    "@angular/build": "22.2.6",
+    "@angular/cli": "22.2.6",
+    "@angular/compiler-cli": "22.2.5",
+    "typescript": "6.0.3"
+  }
+}

@@ -1,5 +1,5 @@
 import { type PlaywrightTestConfig } from '@playwright/test';
-import type { AppReady } from './app-ready.js';
+import { type AppReady } from './app-ready.js';
 import { type Determinism } from './determinism.js';
 export interface E2EConfigOptions {
     /** CI mode. Default: `CI` is set in the environment. */
@@ -10,7 +10,10 @@ export interface E2EConfigOptions {
     includeQuarantine?: boolean;
     /** Timezone and locale pinned for every project. */
     determinism?: Partial<Determinism>;
-    /** App-ready hook, set as the `appReady` option in `use`. Default: none. A preset sets it. */
+    /**
+     * App-ready hook, set as the `appReady` option in `use` (wrapped with `appReadyOption`, because
+     * Playwright calls a bare function in `use` as a fixture). Default: none. A preset sets it.
+     */
     appReady?: AppReady;
 }
 /**

@@ -1,5 +1,5 @@
 import type { BrowserContext } from '@playwright/test';
-import type { AppReady } from './app-ready.js';
+import { type AppReadyOption } from './app-ready.js';
 type Use<T> = (value: T) => Promise<void>;
 /**
  * `appReadyFixture()` for a Flutter web app: the `appReady` option defaults to `flutterReady`, and
@@ -7,7 +7,7 @@ type Use<T> = (value: T) => Promise<void>;
  * popups). Spread into `test.extend({ ...flutterFixture() })`, instead of `appReadyFixture()`.
  */
 export declare function flutterFixture(): {
-    appReady: [AppReady | undefined, {
+    appReady: [undefined | AppReadyOption, {
         option: true;
     }];
     context: ({ context }: {
@@ -15,7 +15,7 @@ export declare function flutterFixture(): {
     }, use: Use<BrowserContext>) => Promise<void>;
     page: ({ page, appReady }: {
         page: import("@playwright/test").Page;
-        appReady: AppReady | undefined;
+        appReady: import("./app-ready.js").AppReady | undefined;
     }, use: (value: import("@playwright/test").Page) => Promise<void>) => Promise<void>;
 };
 export {};
