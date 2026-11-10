@@ -1,3 +1,4 @@
+import { setAppReady } from './app-ready.js';
 import { CleanupRegistry, formatCleanupFailures } from './data.js';
 import { ErrorGuard } from './error-guard.js';
 /**
@@ -47,4 +48,18 @@ export function errorGuardFixture(options = {}) {
         },
         { auto: true },
     ];
+}
+/**
+ * Fixtures for the app-ready hook: the `appReady` option (set it with `test.use({ appReady })` or
+ * `use: { appReady }` in the config) and a `page` override that registers it for `BaseScreen`.
+ * Spread into `test.extend({ ...appReadyFixture() })`.
+ */
+export function appReadyFixture() {
+    return {
+        appReady: [undefined, { option: true }],
+        page: async ({ page, appReady }, use) => {
+            setAppReady(page, appReady);
+            await use(page);
+        },
+    };
 }

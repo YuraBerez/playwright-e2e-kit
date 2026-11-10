@@ -1,4 +1,5 @@
 import { expect } from '@playwright/test';
+import { getAppReady } from './app-ready.js';
 /** Escapes every RegExp metacharacter in `text`, so it matches literally. */
 export function escapeRegExp(text) {
     return text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -19,14 +20,21 @@ export class BaseComponent {
  * `open()` and `verify…()` checks about that screen only.
  *
  * `open()` only navigates: a route guard may redirect, so callers check what actually opened with
- * `verifyShown()` / `verifyUrl()`.
+ * `verifyShown()` / `verifyUrl()`. After `open()` and `reload()` it awaits the app-ready hook, if
+ * one is set (see `appReadyFixture`). With no hook it does nothing more.
  */
 export class BaseScreen extends BaseComponent {
     async open() {
         await this.page.goto(this.path);
+        await this.waitReady();
     }
     async reload() {
         await this.page.reload();
+        await this.waitReady();
+    }
+    /** Override for one screen that needs its own readiness. The default runs the page's hook. */
+    async waitReady() {
+        await getAppReady(this.page)?.(this.page);
     }
     /** The browser is at this screen's URL (a guard did not redirect elsewhere). */
     async verifyUrl() {
