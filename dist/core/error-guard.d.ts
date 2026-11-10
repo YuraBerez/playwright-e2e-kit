@@ -40,7 +40,7 @@ export declare function isAllowed(error: CollectedError, allow: readonly Allowed
 /** Numbered, readable report of the collected errors. */
 export declare function formatErrors(errors: readonly CollectedError[]): string;
 /** Init script: a CSP violation becomes a `console.error`, so the guard reports it. */
-export declare const CSP_VIOLATION_SCRIPT = "document.addEventListener('securitypolicyviolation', (e) => {\n        console.error('CSP violation: ' + e.violatedDirective + ' blocked ' + (e.blockedURI || '(inline)'))\n      })";
+export declare const CSP_VIOLATION_SCRIPT = "try {\n        document.addEventListener('securitypolicyviolation', (e) => {\n          console.error('CSP violation: ' + e.violatedDirective + ' blocked ' + (e.blockedURI || '(inline)'))\n        })\n      } catch (_) {\n        /* about:blank and sandboxed frames can throw on some APIs: never break the page */\n      }";
 /**
  * Collects silent failures that no `expect` looks for: uncaught page errors, `console.error`,
  * responses with status >= `minStatus`, CSP violations, and failed requests (network level),

@@ -1,3 +1,5 @@
+/** Options that the `unusedVars` setting gives to the rule: unused args are fine when they start with `_`. */
+export const UNDERSCORE_ARGS_OPTIONS = { args: 'after-used', argsIgnorePattern: '^_' };
 const alt = (names) => names.join('|');
 const callOf = (names) => `CallExpression[callee.type='MemberExpression'][callee.property.name=/^(${alt(names)})$/]`;
 /** Every locator factory on a page or locator. */
@@ -60,7 +62,17 @@ export function e2eLayerRules(options = {}) {
     const pageObjectImports = {
         patterns: [{ group: upperLayers, message: 'Page objects do not depend on steps, fixtures or data.' }],
     };
+    const unusedVars = options.unusedVars
+        ? [
+            {
+                name: `${name}/underscore-args`,
+                files: [`${root}/**/*.ts`],
+                rules: { [options.unusedVars]: ['error', { ...UNDERSCORE_ARGS_OPTIONS }] },
+            },
+        ]
+        : [];
     return [
+        ...unusedVars,
         {
             name: `${name}/all-no-fixed-waits`,
             files: [`${root}/**/*.ts`],

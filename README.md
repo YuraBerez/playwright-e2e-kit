@@ -190,6 +190,38 @@ pass it as `errorGuardFixture({ allow: flutterErrorAllowList })`. It allows only
 (CanvasKit and font fetches from gstatic, service worker registration), each entry with a reason.
 Apps that do not import this entry see no change.
 
+**Init scripts and frames.** The guard installs one init script per context. An init script runs in
+every frame, also in `about:blank` and in sandboxed or third-party iframes, where `localStorage`,
+`sessionStorage` and some other APIs throw a `SecurityError`. The kit scripts are wrapped in
+`try/catch` and never touch storage. Do the same in your own init scripts:
+
+```ts
+await context.addInitScript(() => {
+  try {
+    window.localStorage.setItem('consent', 'true')
+  } catch {
+    /* about:blank or a sandboxed frame: skip */
+  }
+})
+```
+
+**Third-party iframes.** The guard watches the whole context, so it also sees `pageerror`,
+`console.error` and failed or 5xx requests that come from an embedded frame (an ad, a map or a
+payment widget). It cannot tell the frame from the app. To ignore a frame, add a narrow entry with a reason. Match
+by what the entry kind records: `requestfailed` and `console` carry the URL of the failing request
+or the logging frame, so a URL (or a pattern of it) works. A `pageerror` carries the URL of the
+top page, never the frame's, so match it by a message pattern of the frame's error:
+
+```ts
+errorGuardFixture({
+  allow: [
+    { kind: 'requestfailed', message: 'https://widgets.example.com/', reason: 'Embedded widget, not ours (#12)' },
+    { kind: 'console', message: /widgets\.example\.com/, reason: 'Embedded widget, not ours (#12)' },
+    { kind: 'pageerror', message: /WidgetSdk is not defined/, reason: 'Embedded widget, not ours (#12)' },
+  ],
+})
+```
+
 ## Accessibility
 
 `new A11ySteps(page, { exclusions })` (from `playwright-e2e-kit/a11y`) gives
@@ -209,6 +241,24 @@ When the audit fails, the full axe report (all violations, before exclusions, an
 ones) is attached to the test as `axe-report.json`. Never disable a rule for all elements. The
 exclusions file is the only place where raw CSS is allowed in an e2e suite. Axe cannot check all
 items (reading order, focus management, screen-reader behaviour), so keep manual checks.
+
+**Third-party iframes.** Axe also audits the content of iframes, so a violation inside an embedded
+frame fails the step. A node in a frame has a nested `target`: the iframe selector first, then the
+node. To exclude a frame, match the first part (the iframe) with a matcher, for one rule:
+
+```ts
+const exclusions: A11yExclusion[] = [
+  {
+    rule: 'color-contrast',
+    selector: '#payment-frame',
+    reason: 'Third-party widget: we cannot change its markup.',
+    issue: '#13',
+  },
+]
+```
+
+A frame that you do not own cannot be fixed in the app, so the exclusion is allowed there.
+Keep one entry per rule and frame; do not exclude the iframe for all rules.
 
 ## Playwright config
 
@@ -775,6 +825,12 @@ plugin is necessary.
 | `<root>/screens/**` | CSS/XPath/`locator`/`getByPlaceholder`/`getByAltText`/`getByTitle`; `page.evaluate`, `page.click(...)`-style calls and input devices; `filter({ has })`; `goto` outside routed screens (`screens/*.ts`); imports from steps, fixtures or data |
 | `<root>/steps/**` | all locator calls; selector-taking `page.*` calls; `page.goto`; imports from specs or `data` |
 | `tsc` | reading a page object's `private` locator from outside the class |
+
+Unused arguments with a leading underscore (`{ browserName: _browserName }`, used in fixtures to
+force a dependency) are not part of the layer rules. To allow them, name the unused-variable rule
+that your config uses: `...e2eLayerRules({ unusedVars: '@typescript-eslint/no-unused-vars' })`
+(or `'no-unused-vars'`). The rule is set to `error` with `argsIgnorePattern: '^_'` for files
+under the root. Without the option, your own setting stays.
 
 A lint failure means that the code is in the wrong layer. Move the code; do not loosen the rule.
 
