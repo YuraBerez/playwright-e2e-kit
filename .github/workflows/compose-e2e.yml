@@ -1,0 +1,210 @@
+# Reusable workflow: Playwright e2e tests against a Compose Multiplatform web (wasmJs) app.
+# It builds the app with its Gradle wrapper (JDK, Gradle cache), serves the build output with a
+# static server, installs the Playwright browsers (cached) and runs the tests. The report is
+# uploaded without the traces by default: a trace keeps request headers, cookies and typed text.
+#
+# Consumer (README "Compose MP web in CI"):
+#   jobs:
+#     e2e:
+#       uses: YuraBerez/playwright-e2e-kit/.github/workflows/compose-e2e.yml@v0.3.0
+#       with:
+#         app-dir: web
+#
+# The tests get the app URL in E2E_BASE_URL (for example `use: { baseURL: process.env.E2E_BASE_URL }`).
+# Runs on GitHub-hosted runners (Linux, macOS) and on self-hosted macOS runners (`runs-on` input).
+name: Compose MP web e2e
+
+on:
+  workflow_call:
+    inputs:
+      app-dir:
+        description: Directory of the Gradle project (with gradlew), relative to the repository root.
+        type: string
+        required: true
+      gradle-task:
+        description: Gradle task that builds the web distribution.
+        type: string
+        default: wasmJsBrowserDistribution
+      dist-dir:
+        description: Build output to serve, relative to app-dir.
+        type: string
+        default: build/dist/wasmJs/productionExecutable
+      base-path:
+        description: URL path the app is served at (for example /app/). Must start and end with /.
+        type: string
+        default: /
+      port:
+        description: Port of the static server.
+        type: number
+        default: 8080
+      e2e-dir:
+        description: Directory with the package.json of the Playwright tests, relative to the repository root.
+        type: string
+        default: .
+      install-command:
+        description: Command that installs the test dependencies, run in e2e-dir.
+        type: string
+        default: npm ci
+      playwright-config:
+        description: Playwright config file, relative to e2e-dir. Empty = Playwright's default lookup.
+        type: string
+        default: ''
+      playwright-project:
+        description: Playwright project to run (--project). Empty = all projects.
+        type: string
+        default: ''
+      browsers:
+        description: Browsers to install, separated by spaces (chromium, firefox, webkit).
+        type: string
+        default: chromium
+      report-dir:
+        description: HTML report folder, relative to e2e-dir.
+        type: string
+        default: playwright-report
+      results-dir:
+        description: Test output folder (screenshots, traces), relative to e2e-dir.
+        type: string
+        default: test-results
+      upload-report:
+        description: When to upload the report and the test output (always, on-failure, never).
+        type: string
+        default: on-failure
+      upload-traces:
+        description: Also upload the traces (*.zip). A trace can hold secrets (headers, cookies, typed text).
+        type: boolean
+        default: false
+      artifact-name:
+        description: Name of the uploaded artifact.
+        type: string
+        default: compose-e2e-report
+      runs-on:
+        description: Runner as JSON, for example "ubuntu-latest" or ["self-hosted", "macOS"].
+        type: string
+        default: '"ubuntu-latest"'
+      node-version:
+        description: Node.js version for the tests.
+        type: string
+        default: '24'
+      java-version:
+        description: JDK (Temurin) version for Gradle.
+        type: string
+        default: '21'
+      timeout-minutes:
+        description: Timeout of the job.
+        type: number
+        default: 30
+
+permissions:
+  contents: read
+
+jobs:
+  e2e:
+    name: build, serve, test
+    runs-on: ${{ fromJSON(inputs.runs-on) }}
+    timeout-minutes: ${{ inputs.timeout-minutes }}
+    env:
+      E2E_BASE_URL: http://localhost:${{ inputs.port }}${{ inputs.base-path }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-java@77dd5b2ce225ea11469928ac317850245a74ae78 # v6.2.0
+        with:
+          distribution: temurin
+          java-version: ${{ inputs.java-version }}
+          cache: gradle
+          cache-dependency-path: |
+            ${{ inputs.app-dir }}/*.gradle*
+            ${{ inputs.app-dir }}/gradle/wrapper/gradle-wrapper.properties
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: ${{ inputs.node-version }}
+          cache: npm
+          cache-dependency-path: ${{ inputs.e2e-dir }}/package-lock.json
+
+      - name: Build the web distribution
+        working-directory: ${{ inputs.app-dir }}
+        run: ./gradlew "$GRADLE_TASK" --console=plain
+        env:
+          GRADLE_TASK: ${{ inputs.gradle-task }}
+
+      - name: Install the test dependencies
+        working-directory: ${{ inputs.e2e-dir }}
+        run: ${{ inputs.install-command }}
+
+      - name: Find the Playwright version and browsers folder
+        id: pw
+        working-directory: ${{ inputs.e2e-dir }}
+        run: |
+          echo "version=$(npx --no-install playwright --version | awk '{print $2}')" >> "$GITHUB_OUTPUT"
+          if [ "$RUNNER_OS" = macOS ]; then echo "path=$HOME/Library/Caches/ms-playwright" >> "$GITHUB_OUTPUT"
+          else echo "path=$HOME/.cache/ms-playwright" >> "$GITHUB_OUTPUT"; fi
+      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ${{ steps.pw.outputs.path }}
+          key: playwright-${{ runner.os }}-${{ runner.arch }}-${{ steps.pw.outputs.version }}-${{ inputs.browsers }}
+      - name: Install the Playwright browsers
+        working-directory: ${{ inputs.e2e-dir }}
+        # Linux needs the system libraries (sudo on a hosted runner); macOS needs none.
+        run: |
+          read -ra list <<< "$BROWSERS"
+          if [ "$RUNNER_OS" = Linux ]; then npx --no-install playwright install --with-deps "${list[@]}"
+          else npx --no-install playwright install "${list[@]}"; fi
+        env:
+          BROWSERS: ${{ inputs.browsers }}
+
+      - name: Serve the app and run the tests
+        env:
+          DIST: ${{ inputs.app-dir }}/${{ inputs.dist-dir }}
+          BASE_PATH: ${{ inputs.base-path }}
+          PORT: ${{ inputs.port }}
+          E2E_DIR: ${{ inputs.e2e-dir }}
+          PW_CONFIG: ${{ inputs.playwright-config }}
+          PW_PROJECT: ${{ inputs.playwright-project }}
+        run: |
+          # Static server without dependencies: the base path, the wasm MIME type (needed for
+          # streaming compilation) and the single-page-app fallback to index.html.
+          cat > "$RUNNER_TEMP/serve-compose.mjs" <<'EOF'
+          import { createReadStream, existsSync, statSync } from 'node:fs'
+          import { createServer } from 'node:http'
+          import { extname, join, normalize, resolve } from 'node:path'
+          const [dir, port, base] = process.argv.slice(2)
+          const root = resolve(dir)
+          const types = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.mjs': 'text/javascript; charset=utf-8',
+            '.css': 'text/css; charset=utf-8', '.json': 'application/json; charset=utf-8', '.wasm': 'application/wasm', '.svg': 'image/svg+xml',
+            '.png': 'image/png', '.ico': 'image/x-icon', '.ttf': 'font/ttf', '.otf': 'font/otf', '.woff2': 'font/woff2' }
+          createServer((req, res) => {
+            const path = decodeURIComponent(new URL(req.url ?? '/', 'http://localhost').pathname)
+            if (!path.startsWith(base) && path !== base.replace(/\/$/, '')) return void res.writeHead(404).end()
+            let file = normalize(join(root, path.slice(base.length)))
+            if (!file.startsWith(root)) return void res.writeHead(403).end()
+            if (!existsSync(file) || statSync(file).isDirectory()) {
+              const index = join(file, 'index.html')
+              file = existsSync(index) ? index : join(root, 'index.html')
+            }
+            res.writeHead(200, { 'Content-Type': types[extname(file)] ?? 'application/octet-stream', 'Cache-Control': 'no-store' })
+            createReadStream(file).pipe(res)
+          }).listen(Number(port), () => console.log(`serving ${root} at http://localhost:${port}${base}`))
+          EOF
+          case "$BASE_PATH" in /*/|/) ;; *) echo "::error::base-path must start and end with /"; exit 1 ;; esac
+          test -f "$DIST/index.html" || { echo "::error::No index.html in $DIST: check dist-dir"; exit 1; }
+          node "$RUNNER_TEMP/serve-compose.mjs" "$DIST" "$PORT" "$BASE_PATH" &
+          server=$!
+          trap 'kill $server 2>/dev/null' EXIT
+          for _ in $(seq 1 60); do curl -fsS -o /dev/null "$E2E_BASE_URL" && break; sleep 0.5; done
+          curl -fsS -o /dev/null "$E2E_BASE_URL"
+          args=()
+          if [ -n "$PW_CONFIG" ]; then args+=(-c "$PW_CONFIG"); fi
+          if [ -n "$PW_PROJECT" ]; then args+=(--project "$PW_PROJECT"); fi
+          cd "$E2E_DIR"
+          npx --no-install playwright test "${args[@]}"
+
+      - name: Upload the report
+        if: ${{ !cancelled() && (inputs.upload-report == 'always' || (inputs.upload-report == 'on-failure' && failure())) }}
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: ${{ inputs.artifact-name }}
+          path: |
+            ${{ inputs.e2e-dir }}/${{ inputs.report-dir }}/
+            ${{ inputs.e2e-dir }}/${{ inputs.results-dir }}/
+            ${{ !inputs.upload-traces && format('!{0}/**/*.zip', inputs.e2e-dir) || '' }}
+          retention-days: 7
+          if-no-files-found: ignore
