@@ -207,14 +207,17 @@ await context.addInitScript(() => {
 
 **Third-party iframes.** The guard watches the whole context, so it also sees `pageerror`,
 `console.error` and failed or 5xx requests that come from an embedded frame (an ad, a map or a
-payment widget). It cannot tell the frame from the app. To ignore a frame, allow its URL (the
-`message` is also tested against the URL of the error); keep the entry narrow and give a reason:
+payment widget). It cannot tell the frame from the app. To ignore a frame, add a narrow entry with a reason. Match
+by what the entry kind records: `requestfailed` and `console` carry the URL of the failing request
+or the logging frame, so a URL (or a pattern of it) works. A `pageerror` carries the URL of the
+top page, never the frame's, so match it by a message pattern of the frame's error:
 
 ```ts
 errorGuardFixture({
   allow: [
     { kind: 'requestfailed', message: 'https://widgets.example.com/', reason: 'Embedded widget, not ours (#12)' },
     { kind: 'console', message: /widgets\.example\.com/, reason: 'Embedded widget, not ours (#12)' },
+    { kind: 'pageerror', message: /WidgetSdk is not defined/, reason: 'Embedded widget, not ours (#12)' },
   ],
 })
 ```

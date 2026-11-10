@@ -10,7 +10,7 @@ Additive: only apps that import `playwright-e2e-kit/compose` see a change.
 ### Added
 
 - Init scripts of the kit (CSP violation listener, Flutter first-frame listener) are wrapped in
-  `try/catch`, so they cannot throw in `about:blank` or sandboxed frames. A real-browser test
+  `try/catch`, so they cannot throw in `about:blank` or sandboxed frames. A real-browser e2e self-test
   covers it. README: how the error guard and the axe step treat third-party iframes, with
   examples to exclude a frame (#28).
 - `e2eLayerRules({ unusedVars })` (opt-in): sets the named unused-variable rule to `error` with
