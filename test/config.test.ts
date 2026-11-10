@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { baseConfig, defineE2EConfig, quarantineGrepInvert } from '../src/config.js'
-import { DEFAULT_LOCALE, DEFAULT_TIMEZONE, deterministicUse } from '../src/determinism.js'
+import { baseConfig, defineE2EConfig, quarantineGrepInvert } from '../src/core/config.js'
+import { DEFAULT_LOCALE, DEFAULT_TIMEZONE, deterministicUse } from '../src/core/determinism.js'
 
 afterEach(() => vi.unstubAllEnvs())
 

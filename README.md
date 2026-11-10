@@ -19,6 +19,8 @@ The built output (`dist/`) is committed, so the install does not build anything 
 `npm ci`. Peer dependencies: `@playwright/test` (required), `@axe-core/playwright` (only for
 `playwright-e2e-kit/a11y`) and `eslint` (only for `playwright-e2e-kit/eslint`).
 
+The package also ships `src/` and the source maps (`dist/**/*.map`), so "Go to Definition" in an IDE and stack traces point to the `.ts` files.
+
 **Move the pin:** change the tag in `package.json`, run `npm install`, and commit
 `package.json` and `package-lock.json` together. A change that breaks a consumer gets a new major
 version.

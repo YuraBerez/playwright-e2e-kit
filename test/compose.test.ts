@@ -1,8 +1,8 @@
 import { describe, expect, it, vi } from 'vitest'
 import type { Locator, Page } from '@playwright/test'
-import { getAppReady, setAppReady, type AppReady } from '../src/app-ready.js'
-import { baseConfig } from '../src/config.js'
-import { isAllowed, type CollectedError } from '../src/error-guard.js'
+import { getAppReady, setAppReady, type AppReady } from '../src/core/app-ready.js'
+import { baseConfig } from '../src/core/config.js'
+import { isAllowed, type CollectedError } from '../src/core/error-guard.js'
 import {
   COMPOSE_A11Y_ROOT,
   COMPOSE_BACKING_FIELD_CLASS,

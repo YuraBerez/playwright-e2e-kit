@@ -33,6 +33,13 @@ see no change). All items below go into it.
   `composeConfig`, `ComposeScreen` and `composeErrorAllowList`, and a `compose` job in the CI e2e
   matrix (JDK 21). The release checklist needs all five e2e jobs green (#11).
 
+### Changed
+
+- Internal layout only: `src/` and `dist/` are split into `core/`, `canvas/`, `flutter/` and
+  `compose/`, with no API change (#16).
+- Sources and source/declaration maps ship with the package, so "Go to Definition" and stack
+  traces point to the `.ts` files (#16).
+
 ### Fixed (found by the real-browser suite, before any release)
 
 - A hook given as the `appReady` option (fixture default, `test.use`, config `use`) was called by

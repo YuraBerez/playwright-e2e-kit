@@ -4,8 +4,8 @@ const toHaveURL = vi.fn(async () => undefined)
 const pwExpect = vi.fn(() => ({ toHaveURL }))
 vi.mock('@playwright/test', () => ({ expect: (...a: unknown[]) => (pwExpect as (...x: unknown[]) => unknown)(...a) }))
 
-const { BaseComponent, BaseScreen, escapeRegExp } = await import('../src/screen.js')
-const { setAppReady } = await import('../src/app-ready.js')
+const { BaseComponent, BaseScreen, escapeRegExp } = await import('../src/core/screen.js')
+const { setAppReady } = await import('../src/core/app-ready.js')
 type Page = ConstructorParameters<typeof BaseComponent>[0]
 
 class SearchScreen extends BaseScreen {

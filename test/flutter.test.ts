@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest'
 import type { BrowserContext, Locator, Page } from '@playwright/test'
-import { getAppReady, setAppReady } from '../src/app-ready.js'
-import { baseConfig } from '../src/config.js'
+import { getAppReady, setAppReady } from '../src/core/app-ready.js'
+import { baseConfig } from '../src/core/config.js'
 import { resolveOption } from './option-helper.js'
 import {
   FLUTTER_FIRST_FRAME_FLAG,

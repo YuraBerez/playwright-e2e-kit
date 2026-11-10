@@ -1,4 +1,4 @@
-import type { AppReady } from '../src/app-ready.js'
+import type { AppReady } from '../src/core/app-ready.js'
 
 /** The hook that an `appReady` option value gives the test, as Playwright resolves it. */
 export async function resolveOption(value: unknown): Promise<AppReady | undefined> {

@@ -1,6 +1,6 @@
 import AxeBuilder from '@axe-core/playwright';
 import { expect, test } from '@playwright/test';
-import { BaseSteps } from './steps.js';
+import { BaseSteps } from './core/steps.js';
 /** WCAG 2.0 and 2.1, levels A and AA. */
 export const WCAG_A_AA_TAGS = ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa'];
 /** True when the exclusion's matcher selects this target part. */
@@ -89,3 +89,4 @@ export class A11ySteps extends BaseSteps {
         expect(remaining.length, `${this.page.url()} has ${remaining.length} accessibility violation(s):\n${formatViolations(remaining)}`).toBe(0);
     }
 }
+//# sourceMappingURL=a11y.js.map

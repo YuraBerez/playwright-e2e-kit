@@ -5,7 +5,7 @@ const { step } = vi.hoisted(() => ({
 }))
 vi.mock('@playwright/test', () => ({ test: { step } }))
 
-const { BaseSteps, boxSteps, humanize, stepTitle } = await import('../src/steps.js')
+const { BaseSteps, boxSteps, humanize, stepTitle } = await import('../src/core/steps.js')
 
 class CartSteps extends BaseSteps {
   readonly label = 'cart'

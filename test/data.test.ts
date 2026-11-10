@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { CleanupRegistry, formatCleanupFailures } from '../src/data.js'
+import { CleanupRegistry, formatCleanupFailures } from '../src/core/data.js'
 
 describe('CleanupRegistry', () => {
   it('runs tasks last-in first-out and empties itself', async () => {

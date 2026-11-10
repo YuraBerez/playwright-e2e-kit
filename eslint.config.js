@@ -23,6 +23,16 @@ export default tseslint.config(
     },
   },
   {
+    // Inside a src/ subfolder `../x` stays in src/ (folder rules: test/boundaries.test.ts); only `../../` leaves it.
+    files: ['src/*/**/*.ts'],
+    rules: {
+      'no-restricted-imports': [
+        'error',
+        { patterns: [{ group: ['../../*'], message: 'The kit must not import from outside src/.' }] },
+      ],
+    },
+  },
+  {
     rules: {
       '@typescript-eslint/no-unused-vars': ['error', { argsIgnorePattern: '^_', varsIgnorePattern: '^_' }],
     },

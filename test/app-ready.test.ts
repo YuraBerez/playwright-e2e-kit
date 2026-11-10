@@ -1,8 +1,8 @@
 import { describe, expect, it, vi } from 'vitest'
 import type { Page } from '@playwright/test'
-import { angularReady, appReadyOption, domContentReady, getAppReady, nuxtReady, setAppReady } from '../src/app-ready.js'
-import { appReadyFixture } from '../src/fixtures.js'
-import { baseConfig, defineE2EConfig } from '../src/config.js'
+import { angularReady, appReadyOption, domContentReady, getAppReady, nuxtReady, setAppReady } from '../src/core/app-ready.js'
+import { appReadyFixture } from '../src/core/fixtures.js'
+import { baseConfig, defineE2EConfig } from '../src/core/config.js'
 import { resolveOption } from './option-helper.js'
 
 const page = () => ({}) as unknown as Page

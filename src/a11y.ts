@@ -1,6 +1,6 @@
 import AxeBuilder from '@axe-core/playwright'
 import { expect, test, type Page } from '@playwright/test'
-import { BaseSteps } from './steps.js'
+import { BaseSteps } from './core/steps.js'
 
 /** WCAG 2.0 and 2.1, levels A and AA. */
 export const WCAG_A_AA_TAGS: readonly string[] = ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa']
