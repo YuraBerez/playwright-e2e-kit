@@ -25,7 +25,7 @@ export interface ComposeDiagnosis {
         canvas: string | null;
         nodes: string[];
     };
-    /** Likely causes and fixes, in the order of the README troubleshooting table. */
+    /** Likely causes and fixes, in the order of the troubleshooting table in docs/compose-web.md. */
     hints: string[];
 }
 type Facts = Omit<ComposeDiagnosis, 'hints'>;

@@ -26,7 +26,7 @@ export interface ComposeDiagnosis {
   nodesWithoutNameCount: number
   /** Computed `pointer-events` of the root, of the canvas, and the distinct values of the nodes. */
   pointerEvents: { root: string | null; canvas: string | null; nodes: string[] }
-  /** Likely causes and fixes, in the order of the README troubleshooting table. */
+  /** Likely causes and fixes, in the order of the troubleshooting table in docs/compose-web.md. */
   hints: string[]
 }
 

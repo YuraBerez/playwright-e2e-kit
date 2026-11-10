@@ -3,7 +3,7 @@
 # static server, installs the Playwright browsers (cached) and runs the tests. The report is
 # uploaded without the traces by default: a trace keeps request headers, cookies and typed text.
 #
-# Consumer (README "Compose MP web in CI"):
+# Consumer (docs/ci.md):
 #   jobs:
 #     e2e:
 #       uses: YuraBerez/playwright-e2e-kit/.github/workflows/compose-e2e.yml@v0.3.0

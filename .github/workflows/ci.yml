@@ -1,6 +1,6 @@
 # CI of the kit. GitHub-hosted runners only (public repository).
 # - gate: type-check, lint (ESLint, no-product-refs, dist matches the sources), unit tests.
-# - e2e: the real-browser self-tests against each fixture app (README "Release checklist":
+# - e2e: the real-browser self-tests against each fixture app (docs/development.md "Release checklist":
 #   every job must be green before a v* tag). The Compose fixture runs through the reusable
 #   workflow compose-e2e.yml that consumers use, so the kit tests its own template.
 name: CI
@@ -83,7 +83,7 @@ jobs:
 
   e2e-compose:
     name: e2e (compose)
-    # The reusable template (README "Compose MP web in CI"). `env` is not available in `with`, so
+    # The reusable template (docs/ci.md). `env` is not available in `with`, so
     # the Node and JDK versions repeat NODE_VERSION and the template's JDK 21 default.
     uses: ./.github/workflows/compose-e2e.yml
     with:

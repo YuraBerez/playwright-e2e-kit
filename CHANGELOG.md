@@ -7,6 +7,16 @@ Keep a Changelog, and the project follows Semantic Versioning. A change that bre
 
 Additive: apps that do not use the new helpers see no change.
 
+### Documentation
+
+- README is short now (install, import table, minimal example, links). The reference moved to
+  `docs/` with an index in `docs/README.md`: layers, fixtures, error guard, network faults,
+  accessibility, config, Flutter web, Compose web, CI, framework matrix, conventions, ESLint
+  rules, development. Text is moved, not rewritten (#29).
+- New guidance: timeouts for slow backends (test, `expect`, action, navigation, and the app's own
+  request timeouts), traces that keep `fill()` values and API bodies (keep them out of CI
+  artifacts), and `escapeRegExp` with `\b` next to non-ASCII letters (use lookarounds) (#29).
+
 ### Added
 
 - `composeScrollUntilVisible`: the end of a list needs two still steps in a row (a lazy list may load
