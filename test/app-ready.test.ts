@@ -68,20 +68,17 @@ describe('helpers', () => {
     delete g.document
   })
 
-  it('angularBootstrapped waits for a rendered ng-version root, not for stability', async () => {
+  it('angularBootstrapped waits for the ng-version root, not for stability', async () => {
     const waitForFunction = vi.fn(async () => undefined)
     await angularBootstrapped({ waitForFunction } as unknown as Page)
     const fn = (waitForFunction.mock.calls[0] as unknown as [() => boolean])[0]
     const g = globalThis as unknown as { window?: unknown; document?: unknown }
-    const doc = (root: { hasChildNodes: () => boolean } | null) => ({ querySelector: (s: string) => (s === '[ng-version]' ? root : null) })
+    const doc = (root: boolean) => ({ querySelector: (s: string) => (root && s === '[ng-version]' ? {} : null) })
     // Testabilities that never become stable (SignalR, timers) do not matter.
     g.window = { getAllAngularTestabilities: () => [{ isStable: () => false }] }
-    g.document = doc(null)
+    g.document = doc(false)
     expect(fn()).toBe(false)
-    // Bootstrapped, but the first change detection did not render the template yet.
-    g.document = doc({ hasChildNodes: () => false })
-    expect(fn()).toBe(false)
-    g.document = doc({ hasChildNodes: () => true })
+    g.document = doc(true)
     expect(fn()).toBe(true)
     delete g.window
     delete g.document

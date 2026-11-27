@@ -13,7 +13,7 @@ export interface LightpandaServerOptions {
 export interface LightpandaServer {
     /** The CDP WebSocket endpoint, for `chromium.connectOverCDP()`. */
     wsEndpoint: string;
-    /** Stops the process. */
+    /** Stops the process: SIGTERM, then SIGKILL after 5 s. */
     close(): Promise<void>;
 }
 /** The binary that `launchLightpanda()` starts when `executablePath` is not set. */
@@ -21,7 +21,8 @@ export declare function lightpandaExecutablePath(options?: Pick<LightpandaServer
 /**
  * Starts `lightpanda serve` on a free local port and resolves when its CDP server answers.
  * `--cdp-allow-timezone-override` is always on, so the `timezoneId` of the Playwright context
- * applies (the kit pins `UTC`).
+ * applies (the kit pins `UTC`). The process is killed when the worker process exits, also when
+ * Playwright stops the worker without its teardown.
  */
 export declare function launchLightpanda(options?: LightpandaServerOptions): Promise<LightpandaServer>;
 //# sourceMappingURL=server.d.ts.map

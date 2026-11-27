@@ -10,7 +10,10 @@ export interface LightpandaWorkerOptions {
 }
 /** Tests with this tag must render: they fail in Lightpanda. */
 export declare const RENDER_REQUIRED_TAG = "@critical";
-type BrowserArgs = Pick<PlaywrightWorkerArgs, 'playwright'> & Pick<PlaywrightWorkerOptions, 'browserName' | 'connectOptions'> & LightpandaWorkerOptions;
+type BrowserArgs = Pick<PlaywrightWorkerArgs, 'playwright'> & Pick<PlaywrightWorkerOptions, 'browserName' | 'connectOptions'> & LightpandaWorkerOptions & {
+    /** Playwright's internal auto fixture with the resolved launch options (sent to a remote browser). */
+    _browserOptions?: Record<string, unknown>;
+};
 /**
  * The `browser` worker fixture with a Lightpanda switch, plus the `lightpanda` and
  * `lightpandaOptions` worker options. Spread into

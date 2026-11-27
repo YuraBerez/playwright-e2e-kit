@@ -21,6 +21,16 @@ export const LIGHTPANDA_USER_AGENT = 'Lightpanda/1.0'
 const RENDERING_KEYS = ['userAgent', 'viewport', 'screen', 'deviceScaleFactor', 'isMobile', 'hasTouch', 'defaultBrowserType', 'channel'] as const
 
 /**
+ * One RegExp that matches only when the project grep (any of its entries, as Playwright ORs a list)
+ * and the tag both match. Each part is a lookahead from the start, so `^` in a part still works.
+ */
+function both(grep: RegExp[], tag: RegExp): RegExp {
+  const any = grep.map((g) => `(?:${g.source})`).join('|')
+  const flags = [...grep, tag].some((r) => r.flags.includes('i')) ? 'i' : ''
+  return new RegExp(`^(?=[\\s\\S]*?(?:${any}))(?=[\\s\\S]*?(?:${tag.source}))`, flags)
+}
+
+/**
  * Splits one project in two by tag:
  * - `project` runs every test without the tag (`grepInvert` gets the tag);
  * - `${name}-lightpanda` runs only the tagged tests, in Lightpanda (`use.lightpanda: true`). It
@@ -42,7 +52,8 @@ export function lightpandaProjects(project: Project, options: LightpandaProjects
     {
       ...project,
       name: options.name ?? `${project.name ?? 'e2e'}-lightpanda`,
-      grep: tag,
+      // A project grep (for example `/@smoke/`) still applies: the test needs the grep and the tag.
+      grep: project.grep === undefined ? tag : both(toList(project.grep), tag),
       use: { ...shared, browserName: 'chromium', userAgent: LIGHTPANDA_USER_AGENT, ...options.use, lightpanda: true } as Project['use'],
     },
   ]

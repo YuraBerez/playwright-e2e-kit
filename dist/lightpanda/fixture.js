@@ -1,6 +1,30 @@
 import { launchLightpanda } from './server.js';
 /** Tests with this tag must render: they fail in Lightpanda. */
 export const RENDER_REQUIRED_TAG = '@critical';
+// HTTP headers are ASCII only: the same encoding as Playwright's own fixture.
+const jsonForceAscii = (value) => JSON.stringify(value).replace(/[\u007f-￿]/g, (c) => `\\u${c.charCodeAt(0).toString(16).padStart(4, '0')}`);
+/**
+ * Playwright's own `browser` fixture (playwright/lib/index.js), for the projects without
+ * Lightpanda: the same checks, the same remote connection and the same launch.
+ */
+async function playwrightBrowser({ playwright, browserName, _browserOptions, connectOptions }, workerInfo) {
+    if (!['chromium', 'firefox', 'webkit'].includes(browserName)) {
+        throw new Error(`Unexpected browserName "${browserName}", must be one of "chromium", "firefox" or "webkit"`);
+    }
+    if (connectOptions) {
+        return playwright[browserName].connect(connectOptions.wsEndpoint, {
+            ...connectOptions,
+            exposeNetwork: connectOptions.exposeNetwork,
+            headers: { 'x-playwright-launch-options': jsonForceAscii(_browserOptions), ...connectOptions.headers },
+        });
+    }
+    // The launch options come from `_browserOptions` (it sets the defaults of `launch()`).
+    const browser = await playwright[browserName].launch();
+    const bindable = browser;
+    if (process.env.PLAYWRIGHT_DASHBOARD && bindable.bind)
+        await bindable.bind(`worker-${workerInfo.parallelIndex}`);
+    return browser;
+}
 /**
  * The `browser` worker fixture with a Lightpanda switch, plus the `lightpanda` and
  * `lightpandaOptions` worker options. Spread into
@@ -18,7 +42,8 @@ export function lightpandaFixture(defaults = {}) {
         lightpanda: [false, { scope: 'worker', option: true }],
         lightpandaOptions: [defaults, { scope: 'worker', option: true }],
         browser: [
-            async ({ playwright, browserName, connectOptions, lightpanda, lightpandaOptions }, use) => {
+            // Playwright reads the destructured names of the first argument to find the dependencies.
+            async ({ playwright, browserName, _browserOptions, connectOptions, lightpanda, lightpandaOptions }, use, workerInfo) => {
                 let browser;
                 let stop = async () => { };
                 if (lightpanda) {
@@ -32,12 +57,8 @@ export function lightpandaFixture(defaults = {}) {
                         throw error;
                     }
                 }
-                else if (connectOptions) {
-                    browser = await playwright[browserName].connect(connectOptions.wsEndpoint, connectOptions);
-                }
                 else {
-                    // Same as Playwright's fixture: the launch options come from its `_browserOptions` auto fixture.
-                    browser = await playwright[browserName].launch();
+                    browser = await playwrightBrowser({ playwright, browserName, _browserOptions, connectOptions, lightpanda, lightpandaOptions }, workerInfo);
                 }
                 try {
                     await use(browser);

@@ -24,7 +24,7 @@ test.describe('angularReady', () => {
 test.describe('angularBootstrapped', () => {
   test.use({ appReady: appReadyOption(angularBootstrapped) })
 
-  test('open() returns once the root is bootstrapped and rendered, with a zone that never gets stable', async ({ page }) => {
+  test('open() returns once the root is bootstrapped, with a zone that never gets stable', async ({ page }) => {
     // A testability that is never stable, as in an app with a SignalR connection: angularReady would wait until the timeout.
     await page.addInitScript(() => {
       ;(window as unknown as Record<string, unknown>).getAllAngularTestabilities = () => [{ isStable: () => false }]
