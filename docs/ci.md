@@ -23,7 +23,7 @@ name: e2e
 on: [pull_request]
 jobs:
   web:
-    uses: YuraBerez/playwright-e2e-kit/.github/workflows/compose-e2e.yml@v0.3.0
+    uses: YuraBerez/playwright-e2e-kit/.github/workflows/compose-e2e.yml@v0.4.0
     with:
       # Standard Compose Multiplatform layout: gradlew at the repository root, web module composeApp.
       gradle-dir: .                 # where gradlew is (the default)

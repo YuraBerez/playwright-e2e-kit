@@ -5,6 +5,8 @@ Keep a Changelog, and the project follows Semantic Versioning. A change that bre
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-11-27
+
 Additive at run time: apps that do not import `playwright-e2e-kit/lightpanda` or use
 `angularBootstrapped` see no change. Lint: `e2eLayerRules()` now reports a tag that it does not
 know. If your suite has its own tags, add them with `e2eLayerRules({ tags: [...] })`.
