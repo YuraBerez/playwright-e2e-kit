@@ -1,15 +1,20 @@
 // Real-browser self-tests of the kit: the same suite runs against a React, a Vue, a Flutter web
 // and a Compose Multiplatform web (wasmJs) fixture app, plus an Angular one (test/fixtures-apps/).
-// `E2E_APP=react|vue|angular|flutter|compose` runs one app only (CI matrix).
+// `E2E_APP=react|vue|angular|flutter|compose` runs one app only (CI matrix), or a comma list.
 //
 // React, Vue and Angular use the kit's default config (no app-ready hook, default `data-testid`): this
 // proves that Flutter support changes nothing for them. The Angular spec adds one opt-in
 // `angularReady` test. Only the Flutter project uses `flutterConfig()`, and only the Compose
 // project uses `composeConfig()`.
+//
+// The DOM apps (React, Vue, Angular) also get a `<app>-lightpanda` project (`lightpandaProjects()`):
+// the tests tagged `@lightpanda` run there and nowhere else. `E2E_ENGINE=playwright` keeps only the
+// rendering projects, `E2E_ENGINE=lightpanda` only the Lightpanda ones (the two CI jobs).
 import { devices, type PlaywrightTestConfig } from '@playwright/test'
 import { defineE2EConfig } from 'playwright-e2e-kit/config'
 import { composeConfig } from 'playwright-e2e-kit/compose'
 import { flutterConfig } from 'playwright-e2e-kit/flutter'
+import { lightpandaProjects } from 'playwright-e2e-kit/lightpanda'
 
 type App = 'react' | 'vue' | 'angular' | 'flutter' | 'compose'
 
@@ -36,9 +41,15 @@ const APPS: Record<App, { port: number; out: string; testMatch: RegExp }> = {
   },
 }
 
-const selected = process.env.E2E_APP
-if (selected && !(selected in APPS)) throw new Error(`E2E_APP must be one of ${Object.keys(APPS).join(', ')}.`)
-const apps = (selected ? [selected] : Object.keys(APPS)) as App[]
+// `E2E_APP` takes one app or a comma-separated list (`react,vue,angular` for the Lightpanda job).
+const selected = process.env.E2E_APP?.split(',').filter(Boolean) ?? []
+for (const app of selected) if (!(app in APPS)) throw new Error(`E2E_APP must be one of ${Object.keys(APPS).join(', ')}.`)
+const apps = (selected.length ? selected : Object.keys(APPS)) as App[]
+
+const engine = process.env.E2E_ENGINE
+if (engine && engine !== 'playwright' && engine !== 'lightpanda') throw new Error('E2E_ENGINE must be playwright or lightpanda.')
+// Lightpanda has no canvas: Flutter and Compose stay in the rendering browsers.
+const LIGHTPANDA_APPS: readonly App[] = ['react', 'vue', 'angular']
 const root = new URL('..', import.meta.url).pathname
 // `E2E_BASE_URL` (the reusable workflow .github/workflows/compose-e2e.yml): the app is already
 // served there, so no web server is started. Run one project with it (`--project compose`).
@@ -80,16 +91,21 @@ export default defineE2EConfig({
   testDir: '.',
   outputDir: 'test-results',
   webServer,
-  projects: apps.flatMap((app) =>
-    BROWSERS[app].map((device) => ({
-      name: `${app}${SUFFIX[device]}`,
-      testMatch: APPS[app].testMatch,
-      use: {
-        ...devices[device],
-        ...(app === 'flutter' ? flutterUse : {}),
-        ...(app === 'compose' ? composeUse : {}),
-        baseURL: baseURL(app),
-      },
-    })),
-  ),
+  projects: apps
+    .flatMap((app) =>
+      BROWSERS[app].flatMap((device) => {
+        const project = {
+          name: `${app}${SUFFIX[device]}`,
+          testMatch: APPS[app].testMatch,
+          use: {
+            ...devices[device],
+            ...(app === 'flutter' ? flutterUse : {}),
+            ...(app === 'compose' ? composeUse : {}),
+            baseURL: baseURL(app),
+          },
+        }
+        return LIGHTPANDA_APPS.includes(app) ? lightpandaProjects(project) : [project]
+      }),
+    )
+    .filter((project) => !engine || project.name!.endsWith('-lightpanda') === (engine === 'lightpanda')),
 })

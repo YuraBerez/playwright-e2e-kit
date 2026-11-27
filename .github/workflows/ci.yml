@@ -3,6 +3,9 @@
 # - e2e: the real-browser self-tests against each fixture app (docs/development.md "Release checklist":
 #   every job must be green before a v* tag). The Compose fixture runs through the reusable
 #   workflow compose-e2e.yml that consumers use, so the kit tests its own template.
+#   The e2e jobs run the rendering projects only (E2E_ENGINE=playwright).
+# - e2e-lightpanda: the tests tagged @lightpanda of the DOM apps (React, Vue, Angular), in Lightpanda.
+#   It runs in parallel with the e2e jobs and needs no Playwright browser download.
 name: CI
 
 on:
@@ -21,6 +24,10 @@ permissions:
 env:
   NODE_VERSION: '24'
   FLUTTER_VERSION: '3.47.8'
+  # Pinned Lightpanda release and the SHA-256 of its lightpanda-x86_64-linux asset. To move the pin,
+  # change both (`gh release download <version> -R lightpanda-io/browser -p lightpanda-x86_64-linux`).
+  LIGHTPANDA_VERSION: '1.0.6'
+  LIGHTPANDA_SHA256: 'a9bff4c0b8498433cd16d8165a5e5b47181e5690d4c8e1f011d601f1f2e8a467'
 
 jobs:
   gate:
@@ -50,6 +57,7 @@ jobs:
         app: [react, vue, angular, flutter]
     env:
       E2E_APP: ${{ matrix.app }}
+      E2E_ENGINE: playwright
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
@@ -76,6 +84,49 @@ jobs:
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: e2e-report-${{ matrix.app }}
+          path: |
+            e2e/playwright-report/
+            e2e/test-results/
+          retention-days: 7
+
+  e2e-lightpanda:
+    name: e2e (lightpanda)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      E2E_APP: react,vue,angular
+      E2E_ENGINE: lightpanda
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: |
+            package-lock.json
+            test/fixtures-apps/*/package-lock.json
+      - run: npm ci
+      - name: Install Lightpanda ${{ env.LIGHTPANDA_VERSION }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          bin="$RUNNER_TEMP/lightpanda/lightpanda-x86_64-linux"
+          gh release download "$LIGHTPANDA_VERSION" -R lightpanda-io/browser -p lightpanda-x86_64-linux -D "$(dirname "$bin")"
+          echo "$LIGHTPANDA_SHA256  $bin" | sha256sum --check
+          chmod +x "$bin"
+          "$bin" version
+          echo "LIGHTPANDA_EXECUTABLE_PATH=$bin" >> "$GITHUB_ENV"
+      - run: |
+          node e2e/prepare-app.mjs react
+          node e2e/prepare-app.mjs vue
+          node e2e/prepare-app.mjs angular
+      - run: npm run test:e2e
+        env:
+          E2E_PREBUILT: '1'
+      - if: failure()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: e2e-report-lightpanda
           path: |
             e2e/playwright-report/
             e2e/test-results/

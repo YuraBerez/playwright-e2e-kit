@@ -20,6 +20,8 @@ or describe level.
 - `@smoke`: the few checks to run after each deploy.
 - `@a11y`: accessibility audits.
 - `@quarantine`: a known-unstable test (see "Flakes").
+- `@lightpanda`: a test that needs no renderer. It runs in Lightpanda, not in Chromium (see
+  [Lightpanda](lightpanda.md)). Do not use it together with `@critical`.
 
 Tag with `test('title', { tag: ['@smoke', '@critical'] }, …)`.
 

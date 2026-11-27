@@ -5,6 +5,24 @@ Keep a Changelog, and the project follows Semantic Versioning. A change that bre
 
 ## [Unreleased]
 
+Additive: apps that do not import `playwright-e2e-kit/lightpanda` see no change.
+
+### Added
+
+- `playwright-e2e-kit/lightpanda` (opt-in entry point, no new dependency): runs the tests tagged
+  `@lightpanda` in the Lightpanda headless browser, and all other tests in the rendering browser.
+  `lightpandaProjects(project)` splits a project in two by tag. `lightpandaFixture()` replaces the
+  `browser` worker fixture: one `lightpanda serve` process for each worker, connected over CDP.
+  A `@critical` test fails in Lightpanda. `launchLightpanda()` starts a process by itself (#38).
+- CI: the job `e2e (lightpanda)` runs the `@lightpanda` self-tests of React, Vue and Angular in a
+  pinned Lightpanda release (SHA-256 examined), in parallel with the Playwright jobs.
+  `E2E_ENGINE=playwright|lightpanda` selects the projects, and `E2E_APP` takes a comma list (#38).
+
+### Documentation
+
+- `docs/lightpanda.md`: install, config, the tests to tag and the tests not to tag (layout,
+  accessibility, CORS and CSP, a second context, canvas apps), CI and license (#38).
+
 ## [0.3.0] - 2026-11-10
 
 Additive: apps that do not use the new helpers see no change.

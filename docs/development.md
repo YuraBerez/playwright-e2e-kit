@@ -24,8 +24,9 @@ app also runs in WebKit: project `compose-webkit`; Firefox, project `compose-fir
 `npm run test:e2e` (`E2E_APP=<app>` for one app; Flutter needs the `flutter` SDK, Compose needs a
 JDK 21 in `JAVA_HOME` and builds with its Gradle wrapper). Before you push a `v*` tag:
 
-1. CI on the release commit is green: the `gate` job and **all five** `e2e` jobs (react, vue,
-   angular, flutter, and compose, which runs through the reusable `compose-e2e.yml`).
+1. CI on the release commit is green: the `gate` job, **all five** `e2e` jobs (react, vue,
+   angular, flutter, and compose, which runs through the reusable `compose-e2e.yml`) and the
+   `e2e (lightpanda)` job (the `@lightpanda` tests of React, Vue and Angular, in a pinned Lightpanda).
 2. `dist/` matches the sources (`npm run lint` checks it).
 3. A change that breaks a consumer has a new major version.
 

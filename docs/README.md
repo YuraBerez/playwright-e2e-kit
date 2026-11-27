@@ -18,6 +18,8 @@ These guides hold the detail.
 - [Error guard](error-guard.md): browser errors that fail a test, allow lists.
 - [Network faults](network-fault.md): `networkFault`, expected errors.
 - [Accessibility](accessibility.md): `A11ySteps` and exclusions.
+- [Lightpanda](lightpanda.md): `playwright-e2e-kit/lightpanda`, the tests that need no renderer,
+  and the two CI jobs.
 
 ## Frameworks
 
