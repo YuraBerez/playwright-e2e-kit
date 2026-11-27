@@ -5,5 +5,5 @@ export { CleanupRegistry, formatCleanupFailures, type CleanupFailure, type Resou
 export { appReadyFixture, cleanupFixture, errorGuardFixture, resourceFixture, sessionPerWorker, workerResourceFixture, type CleanupFixtureOptions, type SessionPerWorkerFixtures, type SessionPerWorkerOptions, type SessionPerWorkerWorkerFixtures, type SessionState, type WorkerSession, } from './core/fixtures.js';
 export { networkFault, type NetworkFault, type NetworkFaultOptions, type NetworkFaultUrl } from './core/network-fault.js';
 export { DEFAULT_LOCALE, DEFAULT_TIMEZONE, deterministicUse, type Determinism } from './core/determinism.js';
-export { angularReady, appReadyOption, domContentReady, getAppReady, nuxtReady, setAppReady, type AppReady, type AppReadyOption, } from './core/app-ready.js';
+export { angularBootstrapped, angularReady, appReadyOption, domContentReady, getAppReady, nuxtReady, setAppReady, type AppReady, type AppReadyOption, } from './core/app-ready.js';
 //# sourceMappingURL=index.d.ts.map

@@ -32,6 +32,7 @@ export {
 export { networkFault, type NetworkFault, type NetworkFaultOptions, type NetworkFaultUrl } from './core/network-fault.js'
 export { DEFAULT_LOCALE, DEFAULT_TIMEZONE, deterministicUse, type Determinism } from './core/determinism.js'
 export {
+  angularBootstrapped,
   angularReady,
   appReadyOption,
   domContentReady,

@@ -42,10 +42,20 @@ export default defineE2EConfig({ testDir: './e2e' }, { appReady: nuxtReady })
 
 Ready-made hooks (none is on by default): `domContentReady`, `nuxtReady` (Nuxt hydrated),
 `angularReady` (Angular bootstrapped; every testability stable, or the `ng-version` root when the
-app is zoneless). Playwright calls a bare function in `test.use()` as a fixture, so wrap a hook
+app is zoneless), `angularBootstrapped` (the `ng-version` root is rendered, no stability wait).
+Playwright calls a bare function in `test.use()` as a fixture, so wrap a hook
 there with `appReadyOption(hook)`; `defineE2EConfig` and `flutterConfig` wrap it for you. A screen
 can override `protected waitReady()`. A preset (for example a Flutter one) sets `appReady` the same
 way, through the config `use`.
+
+Select the Angular hook:
+
+| Hook | Waits for | Use it when |
+|---|---|---|
+| `angularReady` | Each testability is stable, or the `ng-version` root if the app has no testabilities. | The app becomes stable after each navigation. |
+| `angularBootstrapped` | The `ng-version` root has child nodes, that is, the first change detection rendered the template. | The app is never stable: a SignalR or WebSocket connection, polling, an analytics SDK, or another long timer in the zone. Then each screen waits for its own content. |
+
+If `open()` with `angularReady` waits until the timeout on a signed-in page, use `angularBootstrapped`.
 
 
 ## Timeouts for slow backends

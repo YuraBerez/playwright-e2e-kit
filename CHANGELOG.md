@@ -5,7 +5,7 @@ Keep a Changelog, and the project follows Semantic Versioning. A change that bre
 
 ## [Unreleased]
 
-Additive: apps that do not import `playwright-e2e-kit/lightpanda` see no change.
+Additive: apps that do not import `playwright-e2e-kit/lightpanda` or use `angularBootstrapped` see no change.
 
 ### Added
 
@@ -18,8 +18,13 @@ Additive: apps that do not import `playwright-e2e-kit/lightpanda` see no change.
   pinned Lightpanda release (SHA-256 examined), in parallel with the Playwright jobs.
   `E2E_ENGINE=playwright|lightpanda` selects the projects, and `E2E_APP` takes a comma list (#38).
 
+- `angularBootstrapped`: an app-ready hook that waits until the `ng-version` root is rendered, not
+  until the app is stable. Use it for an Angular app that never becomes stable (a SignalR
+  connection, polling, an analytics SDK), where `angularReady` waits until the timeout (#37).
+
 ### Documentation
 
+- `docs/config.md`: a table that tells when to use `angularReady` and when `angularBootstrapped` (#37).
 - `docs/lightpanda.md`: install, config, the tests to tag and the tests not to tag (layout,
   accessibility, CORS and CSP, a second context, canvas apps), CI and license (#38).
 

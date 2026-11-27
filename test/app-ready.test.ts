@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest'
 import type { Page } from '@playwright/test'
-import { angularReady, appReadyOption, domContentReady, getAppReady, nuxtReady, setAppReady } from '../src/core/app-ready.js'
+import { angularBootstrapped, angularReady, appReadyOption, domContentReady, getAppReady, nuxtReady, setAppReady } from '../src/core/app-ready.js'
 import { appReadyFixture } from '../src/core/fixtures.js'
 import { baseConfig, defineE2EConfig } from '../src/core/config.js'
 import { resolveOption } from './option-helper.js'
@@ -63,6 +63,25 @@ describe('helpers', () => {
     expect(fn()).toBe(false)
     g.window = { getAllAngularTestabilities: () => [{ isStable: () => true }, { isStable: () => true }] }
     g.document = doc(false)
+    expect(fn()).toBe(true)
+    delete g.window
+    delete g.document
+  })
+
+  it('angularBootstrapped waits for a rendered ng-version root, not for stability', async () => {
+    const waitForFunction = vi.fn(async () => undefined)
+    await angularBootstrapped({ waitForFunction } as unknown as Page)
+    const fn = (waitForFunction.mock.calls[0] as unknown as [() => boolean])[0]
+    const g = globalThis as unknown as { window?: unknown; document?: unknown }
+    const doc = (root: { hasChildNodes: () => boolean } | null) => ({ querySelector: (s: string) => (s === '[ng-version]' ? root : null) })
+    // Testabilities that never become stable (SignalR, timers) do not matter.
+    g.window = { getAllAngularTestabilities: () => [{ isStable: () => false }] }
+    g.document = doc(null)
+    expect(fn()).toBe(false)
+    // Bootstrapped, but the first change detection did not render the template yet.
+    g.document = doc({ hasChildNodes: () => false })
+    expect(fn()).toBe(false)
+    g.document = doc({ hasChildNodes: () => true })
     expect(fn()).toBe(true)
     delete g.window
     delete g.document

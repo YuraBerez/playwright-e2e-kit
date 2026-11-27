@@ -43,6 +43,20 @@ export const angularReady: AppReady = async (page) => {
   })
 }
 
+/**
+ * Ready when Angular has bootstrapped the root component and rendered its template: a root
+ * element has `ng-version` and child nodes (Angular clears the host element, then the first change
+ * detection renders the template). It does not wait for stability. Use it instead of
+ * `angularReady` when the app is never stable, for example with a SignalR connection, polling or
+ * an analytics SDK that keeps timers in the zone. Each screen then waits for its own content.
+ */
+export const angularBootstrapped: AppReady = async (page) => {
+  await page.waitForFunction(() => {
+    const root = document.querySelector('[ng-version]')
+    return root !== null && root.hasChildNodes()
+  })
+}
+
 /** Playwright fixture function that provides `hook` as the value of the `appReady` option. */
 export type AppReadyOption = (
   deps: { browserName: string },
