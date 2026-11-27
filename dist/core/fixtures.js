@@ -82,45 +82,47 @@ function contextOptions(use) {
  */
 export function sessionPerWorker(options) {
     const save = (context) => options.indexedDB ? context.storageState({ indexedDB: true }) : context.storageState();
-    return {
-        workerSession: [
-            async ({ browser }, use, workerInfo) => {
-                const context = await browser.newContext({ ...contextOptions(workerInfo.project.use), storageState: undefined });
-                let state;
+    const workerSession = [
+        async ({ browser }, use, workerInfo) => {
+            const context = await browser.newContext({ ...contextOptions(workerInfo.project.use), storageState: undefined });
+            let state;
+            try {
+                const page = await context.newPage();
                 try {
-                    const page = await context.newPage();
-                    try {
-                        await options.signIn({ page, workerInfo });
-                    }
-                    catch (cause) {
-                        throw new Error(`sessionPerWorker: signIn failed in worker ${workerInfo.parallelIndex}.`, { cause });
-                    }
-                    state = await save(context);
+                    await options.signIn({ page, workerInfo });
                 }
-                finally {
-                    await context.close();
+                catch (cause) {
+                    throw new Error(`sessionPerWorker: signIn failed in worker ${workerInfo.parallelIndex}.`, { cause });
                 }
-                await use({ state, parallelIndex: workerInfo.parallelIndex });
-            },
-            { scope: 'worker' },
-        ],
+                state = await save(context);
+            }
+            finally {
+                await context.close();
+            }
+            await use({ state, parallelIndex: workerInfo.parallelIndex });
+        },
+        { scope: 'worker' },
+    ];
+    const workerSessionSave = [
+        options.saveAfterEachTest
+            ? async ({ context, storageState, workerSession }, use) => {
+                await use();
+                // Only a test that started from the worker's state saves it back (not one with its own `test.use({ storageState })`).
+                if (storageState === workerSession.state)
+                    workerSession.state = await save(context);
+            }
+            : // Off: depends on nothing, so no test context is opened for it.
+                (async ({ browserName: _browserName }, use) => {
+                    await use();
+                }),
+        { auto: true },
+    ];
+    return {
+        workerSession,
         storageState: async ({ workerSession }, use) => {
             await use(workerSession.state);
         },
-        workerSessionSave: [
-            options.saveAfterEachTest
-                ? async ({ context, storageState, workerSession }, use) => {
-                    await use();
-                    // Only a test that started from the worker's state saves it back (not one with its own `test.use({ storageState })`).
-                    if (storageState === workerSession.state)
-                        workerSession.state = await save(context);
-                }
-                : // Off: depends on nothing, so no test context is opened for it.
-                    (async ({ browserName: _browserName }, use) => {
-                        await use();
-                    }),
-            { auto: true },
-        ],
+        workerSessionSave,
     };
 }
 /** A fixture that gives the test a `CleanupRegistry` and runs it at teardown. */

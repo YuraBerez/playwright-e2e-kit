@@ -13,6 +13,12 @@ import {
 } from '../src/core/fixtures.js'
 import type { Browser, BrowserContext, WorkerInfo } from '@playwright/test'
 
+/** Calls a fixture function as the tests do: without the test or worker info that Playwright gives. */
+const withoutInfo =
+  <D, T>(fixture: (deps: D, use: (value: T) => Promise<void>, info: never) => Promise<void>) =>
+  (deps: D, use: (value: T) => Promise<void>) =>
+    fixture(deps, use, {} as never)
+
 const noDeps = { browserName: 'chromium' }
 
 describe('resourceFixture', () => {
@@ -74,7 +80,8 @@ describe('errorGuardFixture', () => {
   }
 
   it('is an auto fixture that watches the context and passes when clean', async () => {
-    const [fixture, options] = errorGuardFixture()
+    const [guardFixture, options] = errorGuardFixture()
+    const fixture = withoutInfo(guardFixture)
     expect(options).toEqual({ auto: true })
     let guard: ErrorGuard | undefined
     await fixture({ context: context() }, async (g) => {
@@ -85,7 +92,7 @@ describe('errorGuardFixture', () => {
 
   it('fails at teardown on a collected error, honouring the allow-list', async () => {
     const ctx = context()
-    const [fixture] = errorGuardFixture({ allow: [{ kind: 'console', message: 'ok', reason: 'r' }] })
+    const fixture = withoutInfo(errorGuardFixture({ allow: [{ kind: 'console', message: 'ok', reason: 'r' }] })[0])
     const msg = (text: string) => ({ type: () => 'error', text: () => text, location: () => ({ url: 'u' }), page: () => null })
     await expect(
       fixture({ context: ctx }, async () => {
@@ -99,7 +106,8 @@ describe('errorGuardFixture', () => {
 describe('workerResourceFixture', () => {
   it('is a worker fixture that creates, shares and destroys the resource', async () => {
     const destroy = vi.fn()
-    const [fixture, options] = workerResourceFixture({ create: async () => ({ id: 1 }), destroy })
+    const [resource, options] = workerResourceFixture({ create: async () => ({ id: 1 }), destroy })
+    const fixture = withoutInfo(resource)
     expect(options).toEqual({ scope: 'worker' })
     const seen: unknown[] = []
     await fixture(noDeps, async (r) => void seen.push(r))
@@ -109,10 +117,11 @@ describe('workerResourceFixture', () => {
 
   it('destroys the resource also when the worker fails', async () => {
     const destroy = vi.fn()
-    const [fixture] = workerResourceFixture({ create: () => 'x', destroy })
+    const [resource] = workerResourceFixture({ create: () => 'x', destroy })
+    const fixture = withoutInfo(resource)
     await expect(fixture(noDeps, async () => Promise.reject(new Error('boom')))).rejects.toThrow('boom')
     expect(destroy).toHaveBeenCalledWith('x')
-    expect(fixture.toString()).toMatch(/^async \(\{/)
+    expect(resource.toString()).toMatch(/^async \(\{/)
   })
 })
 
@@ -197,7 +206,7 @@ describe('sessionPerWorker', () => {
   })
 
   it('opens no test context when saveAfterEachTest is off', () => {
-    const [save] = sessionPerWorker({ signIn: async () => undefined }).workerSessionSave
+    const save = withoutInfo(sessionPerWorker({ signIn: async () => undefined }).workerSessionSave[0])
     expect(save.toString()).not.toMatch(/context/)
   })
 
@@ -205,9 +214,9 @@ describe('sessionPerWorker', () => {
     const testContext = { storageState: vi.fn(async () => state('t2')) } as unknown as BrowserContext
     const run = async (saveAfterEachTest: boolean | undefined, own: boolean) => {
       const session: WorkerSession = { state: state('t1'), parallelIndex: 0 }
-      const [save, options] = sessionPerWorker({ signIn: async () => undefined, saveAfterEachTest }).workerSessionSave
+      const [saveFixture, options] = sessionPerWorker({ signIn: async () => undefined, saveAfterEachTest }).workerSessionSave
       expect(options).toEqual({ auto: true })
-      await save({ context: testContext, storageState: own ? state('mine') : session.state, workerSession: session }, async () => undefined)
+      await withoutInfo(saveFixture)({ context: testContext, storageState: own ? state('mine') : session.state, workerSession: session }, async () => undefined)
       return session.state
     }
     expect(await run(true, false)).toEqual(state('t2'))

@@ -2,6 +2,7 @@
 // test of the worker signed in; with `saveAfterEachTest`, a rotated token reaches the next test.
 // `workerResourceFixture` gives every test of the worker the same resource.
 // The "session" is a refresh token in localStorage; signing in or rotating it changes its suffix.
+// Tagged `@lightpanda`: storage state, not pixels, so the file runs in the Lightpanda project.
 import { expect, test as base, type Page } from '@playwright/test'
 import {
   sessionPerWorker,
@@ -9,12 +10,14 @@ import {
   type SessionPerWorkerFixtures,
   type SessionPerWorkerWorkerFixtures,
 } from 'playwright-e2e-kit'
+import { lightpandaFixture, type LightpandaWorkerOptions } from 'playwright-e2e-kit/lightpanda'
 
 let signIns = 0
 let accountsCreated = 0
 const tokenKey = 'self-test-refresh-token'
 
-const test = base.extend<SessionPerWorkerFixtures, SessionPerWorkerWorkerFixtures & { account: { id: number } }>({
+const test = base.extend<SessionPerWorkerFixtures, SessionPerWorkerWorkerFixtures & LightpandaWorkerOptions & { account: { id: number } }>({
+  ...lightpandaFixture(),
   ...sessionPerWorker({
     signIn: async ({ page, workerInfo }) => {
       signIns++
@@ -31,7 +34,7 @@ const token = (page: Page) => page.evaluate((key) => localStorage.getItem(key), 
 // One worker runs the tests in order, so the second test sees what the first one saved.
 test.describe.configure({ mode: 'serial' })
 
-test('the first test of the worker starts signed in and rotates the token', async ({ page, account }, testInfo) => {
+test('the first test of the worker starts signed in and rotates the token', { tag: '@lightpanda' }, async ({ page, account }, testInfo) => {
   await page.goto('/')
   expect(await token(page)).toBe(`worker-${testInfo.parallelIndex}-gen-1`)
   // The app refreshes: the server rotates the refresh token, the old one is used up.
@@ -40,7 +43,7 @@ test('the first test of the worker starts signed in and rotates the token', asyn
   expect(account.id).toBe(1)
 })
 
-test('the next test of the worker gets the rotated token, with no new sign-in', async ({ page, account }, testInfo) => {
+test('the next test of the worker gets the rotated token, with no new sign-in', { tag: '@lightpanda' }, async ({ page, account }, testInfo) => {
   await page.goto('/')
   expect(await token(page)).toBe(`worker-${testInfo.parallelIndex}-gen-2`)
   expect(signIns).toBe(1)
@@ -51,14 +54,14 @@ test('the next test of the worker gets the rotated token, with no new sign-in', 
 test.describe('a test with its own storage state', () => {
   test.use({ storageState: { cookies: [], origins: [] } })
 
-  test('starts signed out and is not saved back', async ({ page }) => {
+  test('starts signed out and is not saved back', { tag: '@lightpanda' }, async ({ page }) => {
     await page.goto('/')
     expect(await token(page)).toBeNull()
     await page.evaluate((key) => localStorage.setItem(key, 'signed-out-test'), tokenKey)
   })
 })
 
-test('the worker state is unchanged by the test with its own state', async ({ page }, testInfo) => {
+test('the worker state is unchanged by the test with its own state', { tag: '@lightpanda' }, async ({ page }, testInfo) => {
   await page.goto('/')
   expect(await token(page)).toBe(`worker-${testInfo.parallelIndex}-gen-2`)
   expect(signIns).toBe(1)

@@ -22,7 +22,15 @@ export interface E2ELayerRulesOptions {
      * Default: not set, the app's own setting stays.
      */
     unusedVars?: 'no-unused-vars' | '@typescript-eslint/no-unused-vars';
+    /**
+     * Tags of the app, on top of `KIT_TAGS`. A `tag` in the details of `test()` or `test.describe()`
+     * that is not in either list is an error: a typo would send the test to the wrong project or let
+     * a `grep` drop it. Each tag starts with `@`.
+     */
+    tags?: readonly string[];
 }
+/** The tags that the kit gives a meaning to (docs/conventions.md "Tags"). */
+export declare const KIT_TAGS: readonly string[];
 /** Options that the `unusedVars` setting gives to the rule: unused args are fine when they start with `_`. */
 export declare const UNDERSCORE_ARGS_OPTIONS: {
     readonly args: "after-used";

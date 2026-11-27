@@ -36,7 +36,8 @@ export function greeterSuite(test: SuiteTest, options: SuiteOptions): void {
     await new A11ySteps(page, { exclusions: options.a11yExclusions }).expectNoViolations()
   })
 
-  test('creates test data through the back door and removes it at teardown', async ({ page, record, cleanup }) => {
+  // Data layer only, no pixels: `@lightpanda` (the DOM apps run it in their Lightpanda project).
+  test('creates test data through the back door and removes it at teardown', { tag: '@lightpanda' }, async ({ page, record, cleanup }) => {
     expect(store.has(record.id)).toBe(true)
     const extra = `${record.id}-extra`
     store.add(extra)

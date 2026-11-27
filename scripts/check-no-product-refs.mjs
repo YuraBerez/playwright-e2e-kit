@@ -34,6 +34,8 @@ export const ALLOWED_HOSTS = [
   'nodejs.org',
   'vitest.dev',
   'www.gstatic.com',
+  '127.0.0.1', // loopback: the local Lightpanda CDP server
+  'lightpanda.io',
 ]
 
 /** Generated files that name their registries or distribution: no URL check (see the header). */

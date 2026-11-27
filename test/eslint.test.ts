@@ -1,15 +1,15 @@
 import { Linter } from 'eslint'
 import tseslint from 'typescript-eslint'
 import { describe, expect, it } from 'vitest'
-import { e2eLayerRules, UNDERSCORE_ARGS_OPTIONS } from '../src/eslint.js'
+import { e2eLayerRules, KIT_TAGS, UNDERSCORE_ARGS_OPTIONS, type E2ELayerRulesOptions } from '../src/eslint.js'
 
 const cwd = '/project'
 
-function lint(file: string, code: string, root?: string): string[] {
+function lint(file: string, code: string, root?: string, options: E2ELayerRulesOptions = {}): string[] {
   const linter = new Linter({ cwd })
   const config: Linter.Config[] = [
     { files: ['**/*.ts'], languageOptions: { parser: tseslint.parser as Linter.Parser } },
-    ...e2eLayerRules(root ? { root } : {}),
+    ...e2eLayerRules({ ...(root ? { root } : {}), ...options }),
   ]
   return linter.verify(code, config, { filename: `${cwd}/${file}` }).map((m) => m.message)
 }
@@ -17,6 +17,33 @@ function lint(file: string, code: string, root?: string): string[] {
 describe('e2eLayerRules', () => {
   it('names each config with the prefix', () => {
     expect(e2eLayerRules({ name: 'kit' }).every((c) => c.name?.startsWith('kit/'))).toBe(true)
+  })
+
+  describe('tags', () => {
+    const spec = 'e2e/specs/cart.spec.ts'
+    it('accepts the kit tags, in a string or a list, in test and describe', () => {
+      expect(KIT_TAGS).toEqual(['@critical', '@smoke', '@a11y', '@quarantine', '@lightpanda'])
+      expect(lint(spec, "test('pays', { tag: '@critical' }, async () => {})")).toEqual([])
+      expect(lint(spec, "test.describe('cart', { tag: ['@smoke', '@lightpanda'] }, () => {})")).toEqual([])
+      expect(lint('e2e/self-tests/x.test.ts', "test('x', { tag: '@a11y' }, async () => {})")).toEqual([])
+    })
+
+    it('reports a typo in specs, self-tests and shared suites', () => {
+      const unknown = [expect.stringMatching(/^Unknown tag\. Use one of @critical, .*@lightpanda/)]
+      expect(lint(spec, "test('pays', { tag: ['@smoke', '@lightpnda'] }, async () => {})")).toEqual(unknown)
+      expect(lint('e2e/self-tests/x.test.ts', "test('x', { tag: '@smok' }, async () => {})")).toEqual(unknown)
+      expect(lint('e2e/suite.ts', "test.describe('x', { tag: 'smoke' }, () => {})")).toEqual(unknown)
+    })
+
+    it('accepts the tags of the app and rejects an invalid one', () => {
+      expect(lint(spec, "test('x', { tag: '@billing' }, async () => {})", undefined, { tags: ['@billing'] })).toEqual([])
+      expect(() => e2eLayerRules({ tags: ['billing'] })).toThrow(/tag "billing" must be @/)
+      expect(() => e2eLayerRules({ tags: ['@a|b'] })).toThrow(/tag "@a\|b"/)
+    })
+
+    it('ignores a tag property that is not in the details of a call', () => {
+      expect(lint(spec, "const label = { tag: '@anything' }")).toEqual([])
+    })
   })
 
   it('bans fixed waits everywhere under the root', () => {

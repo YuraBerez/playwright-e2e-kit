@@ -36,6 +36,17 @@ export const angularReady = async (page) => {
     });
 };
 /**
+ * Ready when Angular has bootstrapped the root component: a root element has `ng-version`. The
+ * bootstrap creates the root and runs the first change detection in one task, so the template is
+ * rendered then. It does not wait for stability. Use it instead of `angularReady` when the app is
+ * never stable, for example with a SignalR connection, polling or an analytics SDK that keeps
+ * timers in the zone. Each screen then waits for its own content. Not for SSR or prerendered
+ * pages: the server markup already has `ng-version` before the client bootstraps.
+ */
+export const angularBootstrapped = async (page) => {
+    await page.waitForFunction(() => document.querySelector('[ng-version]') !== null);
+};
+/**
  * Wraps a hook for the `appReady` option. Playwright treats a function given to an option (in
  * `test.use()`, the config `use` or a fixture default) as a fixture function and calls it with the
  * fixtures, so a bare `AppReady` does not work there. Use `test.use({ appReady: appReadyOption(hook) })`.

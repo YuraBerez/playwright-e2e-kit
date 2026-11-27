@@ -27,11 +27,12 @@ version.
 
 | Import | Contents |
 |---|---|
-| `playwright-e2e-kit` | `BaseScreen`, `BaseComponent`, `BaseSteps`, `boxSteps`, `ErrorGuard`, `errorGuardFixture`, `ResourceFactory`, `resourceFixture`, `workerResourceFixture`, `sessionPerWorker`, `CleanupRegistry`, `cleanupFixture`, `networkFault`, `deterministicUse`, `appReadyFixture`, `AppReady`, `appReadyOption`, `domContentReady`, `nuxtReady`, `angularReady` |
+| `playwright-e2e-kit` | `BaseScreen`, `BaseComponent`, `BaseSteps`, `boxSteps`, `ErrorGuard`, `errorGuardFixture`, `ResourceFactory`, `resourceFixture`, `workerResourceFixture`, `sessionPerWorker`, `CleanupRegistry`, `cleanupFixture`, `networkFault`, `deterministicUse`, `appReadyFixture`, `AppReady`, `appReadyOption`, `domContentReady`, `nuxtReady`, `angularReady`, `angularBootstrapped`, types `TestFixture`, `WorkerFixture`, `TestOption`, `WorkerOption`, `Use`, `NoDeps` |
 | `playwright-e2e-kit/a11y` | `A11ySteps`, `A11yExclusion`, `withoutExclusions`, `formatViolations` |
 | `playwright-e2e-kit/config` | `defineE2EConfig`, `baseConfig`, `quarantineGrepInvert` |
-| `playwright-e2e-kit/eslint` | `e2eLayerRules()` (flat config) |
+| `playwright-e2e-kit/eslint` | `e2eLayerRules()` (flat config), `KIT_TAGS` |
 | `playwright-e2e-kit/flutter` | Flutter web only (opt-in; the main entry never imports it): `flutterConfig`, `flutterFixture`, `flutterReady`, `enableFlutterSemantics`, `installFlutterFirstFrameListener`, `FlutterScreen`, `scrollUntilVisible`, `flutterType`, `flutterErrorAllowList` |
+| `playwright-e2e-kit/lightpanda` | Lightpanda for the tests that need no renderer (opt-in; no other entry imports it): `lightpandaProjects`, `selectEngine`, `lightpandaFixture`, `withLightpanda`, `launchLightpanda`, `lightpandaExecutablePath`, `LIGHTPANDA_USER_AGENT`, `RENDER_REQUIRED_TAG` |
 | `playwright-e2e-kit/compose` | Compose Multiplatform web (wasmJs) only (opt-in; no other entry imports it): `composeConfig`, `composeFixture`, `composeReady`, `composeTap`, `composeType`, `composeClear`, `composeReadText`, `composeScrollUntilVisible`, `ComposeScreen`, `scrollUntilVisible`, `composeErrorAllowList`, `diagnoseCompose` |
 
 ## Minimal example
@@ -80,6 +81,7 @@ The layers, fixtures, error guard and the other parts are in the guides below.
 | [Network faults](docs/network-fault.md) | `networkFault`: answer calls with errors |
 | [Accessibility](docs/accessibility.md) | `A11ySteps`, exclusions |
 | [Config](docs/config.md) | `defineE2EConfig`, app-ready hook, timeouts, traces and secrets |
+| [Lightpanda](docs/lightpanda.md) | `playwright-e2e-kit/lightpanda`: tests without a renderer, CI |
 | [Flutter web](docs/flutter-web.md) | `playwright-e2e-kit/flutter` |
 | [Compose Multiplatform web](docs/compose-web.md) | `playwright-e2e-kit/compose`, troubleshooting |
 | [Compose MP web in CI](docs/ci.md) | Reusable GitHub Actions workflow |

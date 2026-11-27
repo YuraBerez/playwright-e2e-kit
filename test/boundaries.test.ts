@@ -23,13 +23,15 @@ const internal = (file: string) => specs(file).filter((spec) => spec.startsWith(
 
 describe('kit boundaries', () => {
   it('src has the expected folders', () => {
-    expect(new Set(files.map(folder).filter(Boolean))).toEqual(new Set(['core', 'canvas', 'flutter', 'compose']))
+    expect(new Set(files.map(folder).filter(Boolean))).toEqual(new Set(['core', 'canvas', 'flutter', 'compose', 'lightpanda']))
   })
 
   it('src imports only its own modules and the peer dependencies', () => {
     const offenders: string[] = []
     for (const file of files) {
       for (const spec of specs(file)) {
+        // Node built-ins: only lightpanda/ (it starts a process); the browser-side code must not need them.
+        if (spec.startsWith('node:') && folder(file) === 'lightpanda') continue
         if (!spec.startsWith('.') && !ALLOWED.has(spec)) offenders.push(`${file}: ${spec}`)
         if (spec.startsWith('.') && !files.includes(resolve(file, spec))) offenders.push(`${file}: ${spec} (not a src module)`)
       }
@@ -43,6 +45,7 @@ describe('kit boundaries', () => {
     canvas: ['core'],
     flutter: ['core', 'canvas'],
     compose: ['core', 'canvas'],
+    lightpanda: ['core'],
   }
   it.each(Object.entries(rules))('%s/ imports only %j (and itself)', (dir, allowed) => {
     const offenders: string[] = []
@@ -73,6 +76,7 @@ describe('kit boundaries', () => {
   const adapters = [
     { entry: './flutter', dir: 'flutter', core: 'flutter/ready.ts' },
     { entry: './compose', dir: 'compose', core: 'compose/ready.ts' },
+    { entry: './lightpanda', dir: 'lightpanda', core: 'lightpanda/server.ts' },
   ]
 
   it.each(adapters)('entry points other than $entry never reach $dir/', ({ entry, dir, core }) => {

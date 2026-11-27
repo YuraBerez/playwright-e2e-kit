@@ -10,6 +10,7 @@ import {
 } from 'playwright-e2e-kit'
 import { composeErrorAllowList, composeFixture } from 'playwright-e2e-kit/compose'
 import { flutterErrorAllowList, flutterFixture } from 'playwright-e2e-kit/flutter'
+import { lightpandaFixture, type LightpandaWorkerOptions } from 'playwright-e2e-kit/lightpanda'
 import { recordFactory, type TestRecord } from './data.js'
 
 export interface SuiteFixtures {
@@ -19,8 +20,12 @@ export interface SuiteFixtures {
   appReady: AppReady | undefined
 }
 
-/** React and Vue: the kit's plain fixtures, no Flutter import, no allow-list. */
-export const webTest = base.extend<SuiteFixtures>({
+/**
+ * React, Vue and Angular: the kit's plain fixtures, no Flutter import, no allow-list, and
+ * `lightpandaFixture()` for their `-lightpanda` projects.
+ */
+export const webTest = base.extend<SuiteFixtures, LightpandaWorkerOptions>({
+  ...lightpandaFixture(),
   ...appReadyFixture(),
   errorGuard: errorGuardFixture(),
   cleanup: cleanupFixture({ onFailure: 'throw' }),

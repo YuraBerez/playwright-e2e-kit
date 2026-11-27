@@ -17,6 +17,15 @@ export declare const nuxtReady: AppReady;
  * attribute, which Angular sets when it bootstraps a component.
  */
 export declare const angularReady: AppReady;
+/**
+ * Ready when Angular has bootstrapped the root component: a root element has `ng-version`. The
+ * bootstrap creates the root and runs the first change detection in one task, so the template is
+ * rendered then. It does not wait for stability. Use it instead of `angularReady` when the app is
+ * never stable, for example with a SignalR connection, polling or an analytics SDK that keeps
+ * timers in the zone. Each screen then waits for its own content. Not for SSR or prerendered
+ * pages: the server markup already has `ng-version` before the client bootstraps.
+ */
+export declare const angularBootstrapped: AppReady;
 /** Playwright fixture function that provides `hook` as the value of the `appReady` option. */
 export type AppReadyOption = (deps: {
     browserName: string;

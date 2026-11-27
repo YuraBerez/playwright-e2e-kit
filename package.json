@@ -40,6 +40,10 @@
       "types": "./dist/flutter.d.ts",
       "default": "./dist/flutter.js"
     },
+    "./lightpanda": {
+      "types": "./dist/lightpanda.d.ts",
+      "default": "./dist/lightpanda.js"
+    },
     "./package.json": "./package.json"
   },
   "files": [
