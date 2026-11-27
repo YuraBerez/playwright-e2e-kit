@@ -25,7 +25,10 @@ test('the error guard reports a page error and a console error', async ({ browse
       .poll(() => guard.collected.map((e) => e.text).join('\n'))
       .toMatch(/deliberate console error[\s\S]*deliberate page error/)
     expect(guard.collected[0]?.kind).toBe('console')
-    expect(guard.collected.at(-1)?.kind).toBe(testInfo.project.name === 'angular' ? 'console' : 'pageerror')
+    // The entry of the thrown error, not the last one: WebKit can log a console message for it after the pageerror.
+    expect(guard.collected.find((e) => e.text.includes('deliberate page error'))?.kind).toBe(
+      testInfo.project.name === 'angular' ? 'console' : 'pageerror',
+    )
     expect(() => guard.assertClean()).toThrow(/deliberate console error[\s\S]*deliberate page error/)
   } finally {
     await context.close()
