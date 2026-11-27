@@ -43,4 +43,17 @@ export function lightpandaProjects(project, options = {}) {
         },
     ];
 }
+/**
+ * Keeps the projects of one engine: `lightpanda` keeps the projects with `use.lightpanda: true`,
+ * `playwright` keeps all others. With no engine it keeps every project. Default: the
+ * `E2E_ENGINE` environment variable, so two CI jobs can run the same config, one for each engine.
+ */
+export function selectEngine(projects, engine = process.env.E2E_ENGINE) {
+    if (!engine)
+        return [...projects];
+    if (engine !== 'playwright' && engine !== 'lightpanda')
+        throw new Error(`E2E_ENGINE must be playwright or lightpanda, not "${engine}".`);
+    const isLightpanda = (project) => project.use?.lightpanda === true;
+    return projects.filter((project) => isLightpanda(project) === (engine === 'lightpanda'));
+}
 //# sourceMappingURL=projects.js.map

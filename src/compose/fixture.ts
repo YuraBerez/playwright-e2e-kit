@@ -1,6 +1,7 @@
 import { appReadyOption, type AppReadyOption } from '../core/app-ready.js'
 import { composeReady } from './ready.js'
 import { appReadyFixture } from '../core/fixtures.js'
+import type { TestOption } from '../core/fixture-types.js'
 
 /**
  * `appReadyFixture()` for a Compose Multiplatform web (wasmJs) app: the `appReady` option defaults
@@ -11,6 +12,6 @@ export function composeFixture() {
   return {
     ...appReadyFixture(),
     // Wrapped: Playwright would call a bare `composeReady` as the fixture function.
-    appReady: [appReadyOption(composeReady), { option: true }] as [undefined | AppReadyOption, { option: true }],
+    appReady: [appReadyOption(composeReady), { option: true }] as TestOption<undefined | AppReadyOption>,
   }
 }

@@ -1,3 +1,5 @@
+/** The tags that the kit gives a meaning to (docs/conventions.md "Tags"). */
+export const KIT_TAGS = ['@critical', '@smoke', '@a11y', '@quarantine', '@lightpanda'];
 /** Options that the `unusedVars` setting gives to the rule: unused args are fine when they start with `_`. */
 export const UNDERSCORE_ARGS_OPTIONS = { args: 'after-used', argsIgnorePattern: '^_' };
 const alt = (names) => names.join('|');
@@ -23,6 +25,15 @@ export const PAGE_SELECTOR_METHODS = [
 export function e2eLayerRules(options = {}) {
     const root = (options.root ?? 'e2e').replace(/\/+$/, '');
     const name = options.name ?? 'e2e';
+    const tags = [...KIT_TAGS, ...(options.tags ?? [])];
+    const badTag = tags.find((tag) => !/^@[\w-]+$/.test(tag));
+    if (badTag !== undefined)
+        throw new Error(`e2eLayerRules: tag "${badTag}" must be @ and letters, digits, _ or -.`);
+    const knownTags = {
+        // A string in the `tag` of the details object of a call: `tag: '@x'` or `tag: ['@x', '@y']`.
+        selector: `CallExpression > ObjectExpression > Property[key.name='tag'] Literal:not([value=/^(${alt(tags)})$/])`,
+        message: `Unknown tag. Use one of ${tags.join(', ')}, or add it to the \`tags\` option of e2eLayerRules().`,
+    };
     const noFixedWaits = {
         selector: callOf(['waitForTimeout']),
         message: 'No fixed sleeps in e2e: wait on a condition (expect / waitForURL), never waitForTimeout.',
@@ -76,7 +87,7 @@ export function e2eLayerRules(options = {}) {
         {
             name: `${name}/all-no-fixed-waits`,
             files: [`${root}/**/*.ts`],
-            rules: { 'no-restricted-syntax': ['error', noFixedWaits] },
+            rules: { 'no-restricted-syntax': ['error', noFixedWaits, knownTags] },
         },
         {
             // Inverted: banned everywhere under the root, then re-allowed below for the listed layers, so
@@ -121,6 +132,7 @@ export function e2eLayerRules(options = {}) {
                 'no-restricted-syntax': [
                     'error',
                     noFixedWaits,
+                    knownTags,
                     noNavigation,
                     noPageSelectorMethods,
                     noPageInputDevices,

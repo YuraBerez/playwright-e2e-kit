@@ -23,7 +23,8 @@ or describe level.
 - `@lightpanda`: a test that needs no renderer. It runs in Lightpanda, not in Chromium (see
   [Lightpanda](lightpanda.md)). Do not use it together with `@critical`.
 
-Tag with `test('title', { tag: ['@smoke', '@critical'] }, …)`.
+Tag with `test('title', { tag: ['@smoke', '@critical'] }, …)`. `e2eLayerRules()` reports a tag
+that is not in this list or in its `tags` option.
 
 ## Conventions
 

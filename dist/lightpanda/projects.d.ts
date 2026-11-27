@@ -22,5 +22,13 @@ export declare const LIGHTPANDA_USER_AGENT = "Lightpanda/1.0";
  * redirect, a permission, an API error. Keep layout, visual and accessibility checks in `project`.
  */
 export declare function lightpandaProjects(project: Project, options?: LightpandaProjectsOptions): [Project, Project];
+/** The browser engine of a run: the rendering browsers or Lightpanda. */
+export type E2EEngine = 'playwright' | 'lightpanda';
+/**
+ * Keeps the projects of one engine: `lightpanda` keeps the projects with `use.lightpanda: true`,
+ * `playwright` keeps all others. With no engine it keeps every project. Default: the
+ * `E2E_ENGINE` environment variable, so two CI jobs can run the same config, one for each engine.
+ */
+export declare function selectEngine<P extends Project>(projects: readonly P[], engine?: string | undefined): P[];
 export {};
 //# sourceMappingURL=projects.d.ts.map

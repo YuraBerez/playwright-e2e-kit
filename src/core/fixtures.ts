@@ -2,15 +2,7 @@ import type { Browser, BrowserContext, Page, WorkerInfo } from '@playwright/test
 import { setAppReady, type AppReady, type AppReadyOption } from './app-ready.js'
 import { CleanupRegistry, formatCleanupFailures, type CleanupFailure, type ResourceFactory } from './data.js'
 import { ErrorGuard, type ErrorGuardOptions } from './error-guard.js'
-
-/**
- * Playwright reads the fixture function's source to find its dependencies and requires an
- * object-destructuring first argument. Depending on `browserName` (always available) satisfies
- * that without an empty pattern.
- */
-type NoDeps = { browserName: string }
-
-type Use<T> = (value: T) => Promise<void>
+import type { NoDeps, TestFixture, TestOption, Use, WorkerFixture } from './fixture-types.js'
 
 /**
  * A fixture that creates a fresh resource for the test and destroys it at teardown, also when the
@@ -35,7 +27,7 @@ export function resourceFixture<T>(factory: ResourceFactory<T>) {
  */
 export function workerResourceFixture<T>(
   factory: ResourceFactory<T>,
-): [({ browserName }: NoDeps, use: Use<T>) => Promise<void>, { scope: 'worker' }] {
+): WorkerFixture<T, NoDeps, { scope: 'worker' }> {
   return [
     async ({ browserName: _browserName }: NoDeps, use: Use<T>): Promise<void> => {
       const resource = await factory.create()
@@ -136,54 +128,45 @@ function contextOptions(use: Record<string, unknown>): Record<string, unknown> {
 export function sessionPerWorker(options: SessionPerWorkerOptions) {
   const save = (context: BrowserContext): Promise<SessionState> =>
     options.indexedDB ? context.storageState({ indexedDB: true }) : context.storageState()
-  return {
-    workerSession: [
-      async ({ browser }: { browser: Browser }, use: Use<WorkerSession>, workerInfo: WorkerInfo): Promise<void> => {
-        const context = await browser.newContext({ ...contextOptions(workerInfo.project.use), storageState: undefined })
-        let state: SessionState
+  const workerSession: WorkerFixture<WorkerSession, { browser: Browser }, { scope: 'worker' }> = [
+    async ({ browser }, use, workerInfo) => {
+      const context = await browser.newContext({ ...contextOptions(workerInfo.project.use), storageState: undefined })
+      let state: SessionState
+      try {
+        const page = await context.newPage()
         try {
-          const page = await context.newPage()
-          try {
-            await options.signIn({ page, workerInfo })
-          } catch (cause) {
-            throw new Error(`sessionPerWorker: signIn failed in worker ${workerInfo.parallelIndex}.`, { cause })
-          }
-          state = await save(context)
-        } finally {
-          await context.close()
+          await options.signIn({ page, workerInfo })
+        } catch (cause) {
+          throw new Error(`sessionPerWorker: signIn failed in worker ${workerInfo.parallelIndex}.`, { cause })
         }
-        await use({ state, parallelIndex: workerInfo.parallelIndex })
-      },
-      { scope: 'worker' },
-    ] as [
-      ({ browser }: { browser: Browser }, use: Use<WorkerSession>, workerInfo: WorkerInfo) => Promise<void>,
-      { scope: 'worker' },
-    ],
+        state = await save(context)
+      } finally {
+        await context.close()
+      }
+      await use({ state, parallelIndex: workerInfo.parallelIndex })
+    },
+    { scope: 'worker' },
+  ]
+  type SaveDeps = { context: BrowserContext; storageState: unknown; workerSession: WorkerSession }
+  const workerSessionSave: TestFixture<void, SaveDeps, { auto: true }> = [
+    options.saveAfterEachTest
+      ? async ({ context, storageState, workerSession }, use) => {
+          await use()
+          // Only a test that started from the worker's state saves it back (not one with its own `test.use({ storageState })`).
+          if (storageState === workerSession.state) workerSession.state = await save(context)
+        }
+      : // Off: depends on nothing, so no test context is opened for it.
+        ((async ({ browserName: _browserName }: NoDeps, use: Use<void>): Promise<void> => {
+          await use()
+        }) as never),
+    { auto: true },
+  ]
+  return {
+    workerSession,
     storageState: async ({ workerSession }: { workerSession: WorkerSession }, use: Use<SessionState>): Promise<void> => {
       await use(workerSession.state)
     },
-    workerSessionSave: [
-      options.saveAfterEachTest
-        ? async (
-            { context, storageState, workerSession }: { context: BrowserContext; storageState: unknown; workerSession: WorkerSession },
-            use: Use<void>,
-          ): Promise<void> => {
-            await use()
-            // Only a test that started from the worker's state saves it back (not one with its own `test.use({ storageState })`).
-            if (storageState === workerSession.state) workerSession.state = await save(context)
-          }
-        : // Off: depends on nothing, so no test context is opened for it.
-          (async ({ browserName: _browserName }: NoDeps, use: Use<void>): Promise<void> => {
-            await use()
-          }) as never,
-      { auto: true },
-    ] as [
-      (
-        args: { context: BrowserContext; storageState: unknown; workerSession: WorkerSession },
-        use: Use<void>,
-      ) => Promise<void>,
-      { auto: true },
-    ],
+    workerSessionSave,
   }
 }
 
@@ -214,7 +197,7 @@ export function cleanupFixture(options: CleanupFixtureOptions = {}) {
  */
 export function errorGuardFixture(
   options: ErrorGuardOptions = {},
-): [({ context }: { context: BrowserContext }, use: Use<ErrorGuard>) => Promise<void>, { auto: true }] {
+): TestFixture<ErrorGuard, { context: BrowserContext }, { auto: true }> {
   return [
     async ({ context }: { context: BrowserContext }, use: Use<ErrorGuard>): Promise<void> => {
       const guard = new ErrorGuard(options)
@@ -235,7 +218,7 @@ export function errorGuardFixture(
 export function appReadyFixture() {
   return {
     // Default: no hook. A non-function value; a hook arrives through `appReadyOption()`.
-    appReady: [undefined, { option: true }] as [undefined | AppReadyOption, { option: true }],
+    appReady: [undefined, { option: true }] as TestOption<undefined | AppReadyOption>,
     page: async ({ page, appReady }: { page: Page; appReady: AppReady | undefined }, use: Use<Page>): Promise<void> => {
       setAppReady(page, appReady)
       await use(page)

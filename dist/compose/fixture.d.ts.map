@@ -1,1 +1,1 @@
-{"version":3,"file":"fixture.d.ts","sourceRoot":"","sources":["../../src/compose/fixture.ts"],"names":[],"mappings":"AAAA,OAAO,EAAkB,KAAK,cAAc,EAAE,MAAM,sBAAsB,CAAA;AAI1E;;;;GAIG;AACH,wBAAgB,cAAc;cAIoC,CAAC,SAAS,GAAG,cAAc,EAAE;QAAE,MAAM,EAAE,IAAI,CAAA;KAAE,CAAC;;;;;EAE/G"}
+{"version":3,"file":"fixture.d.ts","sourceRoot":"","sources":["../../src/compose/fixture.ts"],"names":[],"mappings":"AAAA,OAAO,EAAkB,KAAK,cAAc,EAAE,MAAM,sBAAsB,CAAA;AAG1E,OAAO,KAAK,EAAE,UAAU,EAAE,MAAM,0BAA0B,CAAA;AAE1D;;;;GAIG;AACH,wBAAgB,cAAc;cAIoC,UAAU,CAAC,SAAS,GAAG,cAAc,CAAC;;;;;EAEvG"}

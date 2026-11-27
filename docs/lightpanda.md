@@ -40,14 +40,17 @@ nightly build, so do not use it in CI.
 // playwright.config.ts
 import { devices } from '@playwright/test'
 import { defineE2EConfig } from 'playwright-e2e-kit/config'
-import { lightpandaProjects } from 'playwright-e2e-kit/lightpanda'
+import { lightpandaProjects, selectEngine } from 'playwright-e2e-kit/lightpanda'
 
 export default defineE2EConfig({
   testDir: './e2e',
-  projects: lightpandaProjects({
-    name: 'chromium',
-    use: { ...devices['Desktop Chrome'], baseURL: 'https://localhost:4173' },
-  }),
+  // E2E_ENGINE=playwright or E2E_ENGINE=lightpanda keeps the projects of one engine (one CI job each).
+  projects: selectEngine(
+    lightpandaProjects({
+      name: 'chromium',
+      use: { ...devices['Desktop Chrome'], baseURL: 'https://localhost:4173' },
+    }),
+  ),
 })
 ```
 
@@ -57,9 +60,16 @@ The Lightpanda project keeps the context options of `project.use` (`baseURL`, `s
 `userAgent: LIGHTPANDA_USER_AGENT`, because Lightpanda uses an empty user agent from Playwright
 as it is. Options: `tag` (default `/@lightpanda/`), `name` and `use`.
 
-`lightpandaFixture()` replaces the `browser` worker fixture. With `use.lightpanda: true` it
-starts Lightpanda. With `false` (the default) it does the same as the Playwright fixture, so the
-rendering projects do not change. Add it to the `test` of the suite:
+`selectEngine(projects)` keeps the projects of the engine in `E2E_ENGINE`: `lightpanda` keeps the
+projects with `use.lightpanda: true`, `playwright` keeps all others. Without `E2E_ENGINE` it keeps
+all projects, so a local run gives both groups.
+
+`lightpandaFixture()` adds the `lightpanda` and `lightpandaOptions` worker options and overrides
+the `playwright` worker fixture. With `use.lightpanda: true`, `playwright.chromium.launch()`
+starts Lightpanda and connects to it. Playwright's own `browser` fixture calls this function, so
+the kit does not copy that fixture, and each Playwright version keeps its own. With `false` (the
+default) the `playwright` fixture is the real one, so the rendering projects do not change. Add
+it to the `test` of the suite:
 
 ```ts
 // e2e/fixtures/app.ts
@@ -106,13 +116,16 @@ does not have:
 | Flutter web and Compose Multiplatform web | Lightpanda has no canvas. |
 | Each `@critical` scenario | The guard fixture fails it in Lightpanda. |
 
+`e2eLayerRules()` reports a tag that is not known, so a typo such as `@lightpnda` does not send a
+test to the wrong project (see [ESLint rules](eslint-rules.md)).
+
 "Negative" does not mean "safe for Lightpanda". A negative test of a browser rule (CORS, CSP,
 mixed content) must run in a rendering browser.
 
 ## CI
 
-Run the two groups as two parallel jobs. The Lightpanda job needs no
-`npx playwright install`. Select the projects with `--project`:
+Run the two groups as two parallel jobs with the same config. `E2E_ENGINE` selects the projects
+(`selectEngine()`). The Lightpanda job needs no `npx playwright install`:
 
 ```yaml
 jobs:
@@ -120,7 +133,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       # checkout, setup-node, npm ci, npx playwright install --with-deps chromium
-      - run: npx playwright test --project chromium
+      - run: npx playwright test
+        env:
+          E2E_ENGINE: playwright
   e2e-lightpanda:
     runs-on: ubuntu-latest
     env:
@@ -137,7 +152,9 @@ jobs:
           echo "$LIGHTPANDA_SHA256  $bin" | sha256sum --check
           chmod +x "$bin"
           echo "LIGHTPANDA_EXECUTABLE_PATH=$bin" >> "$GITHUB_ENV"
-      - run: npx playwright test --project chromium-lightpanda
+      - run: npx playwright test
+        env:
+          E2E_ENGINE: lightpanda
 ```
 
 Move the pin of Lightpanda in a separate PR, and run the full suite on it. Lightpanda changes

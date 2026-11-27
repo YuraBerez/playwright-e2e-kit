@@ -104,3 +104,8 @@ when the app refreshes in one test, the next test starts with the used token. Tu
   (`workerInfo.parallelIndex`, as in the example);
 - a worker that restarts after a failure signs in again.
 
+## Types of fixture tuples
+
+To write a fixture with options, use the types of the main entry point instead of a cast:
+`TestFixture<T, Deps, Options>`, `WorkerFixture<T, Deps, Options>`, `TestOption<T>`,
+`WorkerOption<T>`, `Use<T>` and `NoDeps`. The kit uses them for its own fixtures.

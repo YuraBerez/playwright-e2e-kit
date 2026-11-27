@@ -2,15 +2,7 @@ import type { Browser, BrowserContext, Page, WorkerInfo } from '@playwright/test
 import { type AppReady, type AppReadyOption } from './app-ready.js';
 import { CleanupRegistry, type ResourceFactory } from './data.js';
 import { ErrorGuard, type ErrorGuardOptions } from './error-guard.js';
-/**
- * Playwright reads the fixture function's source to find its dependencies and requires an
- * object-destructuring first argument. Depending on `browserName` (always available) satisfies
- * that without an empty pattern.
- */
-type NoDeps = {
-    browserName: string;
-};
-type Use<T> = (value: T) => Promise<void>;
+import type { NoDeps, TestFixture, TestOption, Use, WorkerFixture } from './fixture-types.js';
 /**
  * A fixture that creates a fresh resource for the test and destroys it at teardown, also when the
  * test fails.
@@ -22,9 +14,9 @@ export declare function resourceFixture<T>(factory: ResourceFactory<T>): ({ brow
  * data that is expensive to create and that no test changes, for example a read-only account.
  * Declare it in the second type argument of `test.extend<TestFixtures, WorkerFixtures>()`.
  */
-export declare function workerResourceFixture<T>(factory: ResourceFactory<T>): [({ browserName }: NoDeps, use: Use<T>) => Promise<void>, {
+export declare function workerResourceFixture<T>(factory: ResourceFactory<T>): WorkerFixture<T, NoDeps, {
     scope: 'worker';
-}];
+}>;
 /** The cookies and origin storage of a signed-in session, as `context.storageState()` returns it. */
 export type SessionState = Awaited<ReturnType<BrowserContext['storageState']>>;
 /** The signed-in session of one worker (the `workerSession` worker fixture of `sessionPerWorker`). */
@@ -74,21 +66,21 @@ export interface SessionPerWorkerWorkerFixtures {
  * uses the token that the first one already used.
  */
 export declare function sessionPerWorker(options: SessionPerWorkerOptions): {
-    workerSession: [({ browser }: {
+    workerSession: WorkerFixture<WorkerSession, {
         browser: Browser;
-    }, use: Use<WorkerSession>, workerInfo: WorkerInfo) => Promise<void>, {
+    }, {
         scope: "worker";
-    }];
+    }>;
     storageState: ({ workerSession }: {
         workerSession: WorkerSession;
     }, use: Use<SessionState>) => Promise<void>;
-    workerSessionSave: [(args: {
+    workerSessionSave: TestFixture<void, {
         context: BrowserContext;
         storageState: unknown;
         workerSession: WorkerSession;
-    }, use: Use<void>) => Promise<void>, {
+    }, {
         auto: true;
-    }];
+    }>;
 };
 export interface CleanupFixtureOptions {
     /** `warn` (default) logs failed cleanup tasks; `throw` fails the test. */
@@ -100,11 +92,11 @@ export declare function cleanupFixture(options?: CleanupFixtureOptions): ({ brow
  * The error guard as an auto fixture: it watches the test's browser context and fails the test at
  * teardown. Watch extra contexts with `errorGuard.watch(context)`.
  */
-export declare function errorGuardFixture(options?: ErrorGuardOptions): [({ context }: {
+export declare function errorGuardFixture(options?: ErrorGuardOptions): TestFixture<ErrorGuard, {
     context: BrowserContext;
-}, use: Use<ErrorGuard>) => Promise<void>, {
+}, {
     auto: true;
-}];
+}>;
 /**
  * Fixtures for the app-ready hook: the `appReady` option (set it with
  * `test.use({ appReady: appReadyOption(hook) })` or `defineE2EConfig({ … }, { appReady: hook })`)
@@ -112,13 +104,10 @@ export declare function errorGuardFixture(options?: ErrorGuardOptions): [({ cont
  * `test.extend({ ...appReadyFixture() })`.
  */
 export declare function appReadyFixture(): {
-    appReady: [undefined | AppReadyOption, {
-        option: true;
-    }];
+    appReady: TestOption<undefined | AppReadyOption>;
     page: ({ page, appReady }: {
         page: Page;
         appReady: AppReady | undefined;
     }, use: Use<Page>) => Promise<void>;
 };
-export {};
 //# sourceMappingURL=fixtures.d.ts.map

@@ -45,7 +45,7 @@ describe('kit boundaries', () => {
     canvas: ['core'],
     flutter: ['core', 'canvas'],
     compose: ['core', 'canvas'],
-    lightpanda: [],
+    lightpanda: ['core'],
   }
   it.each(Object.entries(rules))('%s/ imports only %j (and itself)', (dir, allowed) => {
     const offenders: string[] = []

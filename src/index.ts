@@ -29,6 +29,7 @@ export {
   type SessionState,
   type WorkerSession,
 } from './core/fixtures.js'
+export type { NoDeps, TestFixture, TestFixtureOptions, TestOption, Use, WorkerFixture, WorkerFixtureOptions, WorkerOption } from './core/fixture-types.js'
 export { networkFault, type NetworkFault, type NetworkFaultOptions, type NetworkFaultUrl } from './core/network-fault.js'
 export { DEFAULT_LOCALE, DEFAULT_TIMEZONE, deterministicUse, type Determinism } from './core/determinism.js'
 export {

@@ -5,14 +5,19 @@ Keep a Changelog, and the project follows Semantic Versioning. A change that bre
 
 ## [Unreleased]
 
-Additive: apps that do not import `playwright-e2e-kit/lightpanda` or use `angularBootstrapped` see no change.
+Additive at run time: apps that do not import `playwright-e2e-kit/lightpanda` or use
+`angularBootstrapped` see no change. Lint: `e2eLayerRules()` now reports a tag that it does not
+know. If your suite has its own tags, add them with `e2eLayerRules({ tags: [...] })`.
 
 ### Added
 
 - `playwright-e2e-kit/lightpanda` (opt-in entry point, no new dependency): runs the tests tagged
   `@lightpanda` in the Lightpanda headless browser, and all other tests in the rendering browser.
-  `lightpandaProjects(project)` splits a project in two by tag. `lightpandaFixture()` replaces the
-  `browser` worker fixture: one `lightpanda serve` process for each worker, connected over CDP.
+  `lightpandaProjects(project)` splits a project in two by tag, and `selectEngine(projects)` keeps
+  the projects of `E2E_ENGINE=playwright|lightpanda` (#40). `lightpandaFixture()` overrides the
+  `playwright` worker fixture: `chromium.launch()` starts one `lightpanda serve` process for each
+  worker and connects over CDP. Playwright's own `browser` fixture stays, so the kit does not copy
+  it (#40).
   A `@critical` test fails in Lightpanda. `launchLightpanda()` starts a process by itself (#38).
 - CI: the job `e2e (lightpanda)` runs the `@lightpanda` self-tests of React, Vue and Angular in a
   pinned Lightpanda release (SHA-256 examined), in parallel with the Playwright jobs.
@@ -21,6 +26,12 @@ Additive: apps that do not import `playwright-e2e-kit/lightpanda` or use `angula
 - `angularBootstrapped`: an app-ready hook that waits until the `ng-version` root is there, not
   until the app is stable. Use it for an Angular app that never becomes stable (a SignalR
   connection, polling, an analytics SDK), where `angularReady` waits until the timeout (#37).
+
+- `e2eLayerRules()` reports a `tag` that is not in `KIT_TAGS` (`@critical`, `@smoke`, `@a11y`,
+  `@quarantine`, `@lightpanda`) or in the new `tags` option. A typo no longer sends a test to the
+  wrong project or lets a `grep` drop it (#40).
+- Types for fixture tuples: `TestFixture`, `WorkerFixture`, `TestOption`, `WorkerOption`, `Use`,
+  `NoDeps`. The kit fixtures use them instead of casts (#40).
 
 ### Documentation
 

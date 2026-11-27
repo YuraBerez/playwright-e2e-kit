@@ -58,3 +58,18 @@ export function lightpandaProjects(project: Project, options: LightpandaProjects
     },
   ]
 }
+
+/** The browser engine of a run: the rendering browsers or Lightpanda. */
+export type E2EEngine = 'playwright' | 'lightpanda'
+
+/**
+ * Keeps the projects of one engine: `lightpanda` keeps the projects with `use.lightpanda: true`,
+ * `playwright` keeps all others. With no engine it keeps every project. Default: the
+ * `E2E_ENGINE` environment variable, so two CI jobs can run the same config, one for each engine.
+ */
+export function selectEngine<P extends Project>(projects: readonly P[], engine: string | undefined = process.env.E2E_ENGINE): P[] {
+  if (!engine) return [...projects]
+  if (engine !== 'playwright' && engine !== 'lightpanda') throw new Error(`E2E_ENGINE must be playwright or lightpanda, not "${engine}".`)
+  const isLightpanda = (project: P) => (project.use as { lightpanda?: boolean } | undefined)?.lightpanda === true
+  return projects.filter((project) => isLightpanda(project) === (engine === 'lightpanda'))
+}

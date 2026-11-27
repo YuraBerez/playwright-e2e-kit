@@ -2,8 +2,8 @@ import { chmodSync, mkdtempSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { lightpandaFixture } from '../src/lightpanda/fixture.js'
-import { LIGHTPANDA_USER_AGENT, lightpandaProjects } from '../src/lightpanda/projects.js'
+import { lightpandaFixture, withLightpanda } from '../src/lightpanda/fixture.js'
+import { LIGHTPANDA_USER_AGENT, lightpandaProjects, selectEngine } from '../src/lightpanda/projects.js'
 import { launchLightpanda, lightpandaExecutablePath } from '../src/lightpanda/server.js'
 
 afterEach(() => vi.unstubAllEnvs())
@@ -59,41 +59,61 @@ describe('lightpandaProjects', () => {
   })
 })
 
+describe('selectEngine', () => {
+  const projects = [...lightpandaProjects({ name: 'web' }), { name: 'flutter', use: {} }, { name: 'raw' }]
+  const names = (engine?: string) => selectEngine(projects, engine).map((p) => p.name)
+
+  it('keeps the projects of one engine, by use.lightpanda, not by name', () => {
+    expect(names('lightpanda')).toEqual(['web-lightpanda'])
+    expect(names('playwright')).toEqual(['web', 'flutter', 'raw'])
+    expect(names(undefined)).toEqual(['web', 'web-lightpanda', 'flutter', 'raw'])
+    expect(selectEngine([{ name: 'x-lightpanda' }], 'lightpanda')).toEqual([])
+  })
+
+  it('reads E2E_ENGINE and rejects an unknown engine', () => {
+    vi.stubEnv('E2E_ENGINE', 'lightpanda')
+    expect(selectEngine(projects).map((p) => p.name)).toEqual(['web-lightpanda'])
+    expect(() => names('chrome')).toThrow(/E2E_ENGINE must be playwright or lightpanda, not "chrome"/)
+  })
+})
+
 describe('lightpandaFixture', () => {
   it('declares worker options that are off by default', () => {
     const fixture = lightpandaFixture({ args: ['--log-level', 'error'] })
     expect(fixture.lightpanda).toEqual([false, { scope: 'worker', option: true }])
     expect(fixture.lightpandaOptions).toEqual([{ args: ['--log-level', 'error'] }, { scope: 'worker', option: true }])
-    expect(fixture.browser[1]).toEqual({ scope: 'worker', timeout: 0 })
+    expect(fixture.playwright[1]).toEqual({ scope: 'worker' })
+    // It does not copy Playwright's own `browser` fixture: that one stays and calls `chromium.launch()`.
+    expect(fixture).not.toHaveProperty('browser')
   })
 
-  it('without Lightpanda, connects to a remote browser as Playwright does', async () => {
-    const [browserFixture] = lightpandaFixture().browser
-    const remote = { close: vi.fn(async () => undefined) }
-    const connect = vi.fn(async () => remote)
-    const launch = vi.fn()
-    const playwright = { chromium: { connect, launch } } as never
-    const connectOptions = { wsEndpoint: 'ws://grid.test/pw', exposeNetwork: '<loopback>', headers: { 'x-team': 'e2e' } }
+  it('without Lightpanda, gives the real playwright object', async () => {
+    const [playwrightFixture] = lightpandaFixture().playwright
+    const real = { chromium: {} }
     const use = vi.fn(async () => undefined)
-    await browserFixture(
-      { playwright, browserName: 'chromium', connectOptions, _browserOptions: { headless: true, args: ['--lang=üa'] }, lightpanda: false, lightpandaOptions: {} } as never,
-      use,
-      { parallelIndex: 0 } as never,
-    )
-    expect(launch).not.toHaveBeenCalled()
-    expect(connect).toHaveBeenCalledWith('ws://grid.test/pw', {
-      ...connectOptions,
-      headers: { 'x-playwright-launch-options': '{"headless":true,"args":["--lang=\\u00fca"]}', 'x-team': 'e2e' },
-    })
-    expect(use).toHaveBeenCalledWith(remote)
-    expect(remote.close).toHaveBeenCalledWith({ reason: 'Test ended.' })
+    await playwrightFixture({ playwright: real, lightpanda: false, lightpandaOptions: {} } as never, use, {} as never)
+    expect(use).toHaveBeenCalledWith(real)
   })
 
-  it('without Lightpanda, rejects an unknown browserName as Playwright does', async () => {
-    const [browserFixture] = lightpandaFixture().browser
-    await expect(
-      browserFixture({ playwright: {}, browserName: 'edge', lightpanda: false } as never, vi.fn(), { parallelIndex: 0 } as never),
-    ).rejects.toThrow(/Unexpected browserName "edge"/)
+  it('with Lightpanda, replaces only chromium.launch and keeps writes on the real objects', () => {
+    const connectOverCDP = vi.fn()
+    const real = { chromium: { connectOverCDP, name: () => 'chromium' }, request: { kind: 'request' }, firefox: { kind: 'firefox' } }
+    const proxied = withLightpanda(real as never, {}) as unknown as typeof real & { chromium: { launch: unknown; _defaultLaunchOptions?: unknown } }
+    expect(proxied.request).toBe(real.request)
+    expect(proxied.firefox).toBe(real.firefox)
+    expect(proxied.chromium.name()).toBe('chromium')
+    expect(typeof proxied.chromium.launch).toBe('function')
+    expect('launch' in real.chromium).toBe(false)
+    // Playwright's `_browserOptions` fixture sets the launch defaults on the browser type.
+    proxied.chromium._defaultLaunchOptions = { headless: true }
+    expect((real.chromium as Record<string, unknown>)._defaultLaunchOptions).toEqual({ headless: true })
+  })
+
+  it('with Lightpanda, launch() reports a missing binary before it connects', async () => {
+    const connectOverCDP = vi.fn()
+    const proxied = withLightpanda({ chromium: { connectOverCDP } } as never, { executablePath: '/nonexistent/lightpanda' })
+    await expect(proxied.chromium.launch()).rejects.toThrow(/not found at \/nonexistent\/lightpanda/)
+    expect(connectOverCDP).not.toHaveBeenCalled()
   })
 
   it('fails a @critical test in Lightpanda and lets it run elsewhere', async () => {

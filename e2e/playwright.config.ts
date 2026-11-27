@@ -9,12 +9,12 @@
 //
 // The DOM apps (React, Vue, Angular) also get a `<app>-lightpanda` project (`lightpandaProjects()`):
 // the tests tagged `@lightpanda` run there and nowhere else. `E2E_ENGINE=playwright` keeps only the
-// rendering projects, `E2E_ENGINE=lightpanda` only the Lightpanda ones (the two CI jobs).
+// rendering projects, `E2E_ENGINE=lightpanda` only the Lightpanda ones (`selectEngine()`, the two CI jobs).
 import { devices, type PlaywrightTestConfig } from '@playwright/test'
 import { defineE2EConfig } from 'playwright-e2e-kit/config'
 import { composeConfig } from 'playwright-e2e-kit/compose'
 import { flutterConfig } from 'playwright-e2e-kit/flutter'
-import { lightpandaProjects } from 'playwright-e2e-kit/lightpanda'
+import { lightpandaProjects, selectEngine } from 'playwright-e2e-kit/lightpanda'
 
 type App = 'react' | 'vue' | 'angular' | 'flutter' | 'compose'
 
@@ -46,8 +46,6 @@ const selected = process.env.E2E_APP?.split(',').filter(Boolean) ?? []
 for (const app of selected) if (!(app in APPS)) throw new Error(`E2E_APP must be one of ${Object.keys(APPS).join(', ')}.`)
 const apps = (selected.length ? selected : Object.keys(APPS)) as App[]
 
-const engine = process.env.E2E_ENGINE
-if (engine && engine !== 'playwright' && engine !== 'lightpanda') throw new Error('E2E_ENGINE must be playwright or lightpanda.')
 // Lightpanda has no canvas: Flutter and Compose stay in the rendering browsers.
 const LIGHTPANDA_APPS: readonly App[] = ['react', 'vue', 'angular']
 const root = new URL('..', import.meta.url).pathname
@@ -91,8 +89,8 @@ export default defineE2EConfig({
   testDir: '.',
   outputDir: 'test-results',
   webServer,
-  projects: apps
-    .flatMap((app) =>
+  projects: selectEngine(
+    apps.flatMap((app) =>
       BROWSERS[app].flatMap((device) => {
         const project = {
           name: `${app}${SUFFIX[device]}`,
@@ -106,6 +104,6 @@ export default defineE2EConfig({
         }
         return LIGHTPANDA_APPS.includes(app) ? lightpandaProjects(project) : [project]
       }),
-    )
-    .filter((project) => !engine || project.name!.endsWith('-lightpanda') === (engine === 'lightpanda')),
+    ),
+  ),
 })
